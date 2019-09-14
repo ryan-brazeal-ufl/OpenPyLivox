@@ -62,8 +62,7 @@ class _heartbeatThread(object):
                 if select.select([self.t_socket],[],[],0.1)[0]:
                     binData, addr = self.t_socket.recvfrom(22)
                     tempObj = openpylivox()
-                    _,ack,cmd_set,cmd_id,ret_code_bin = tempObj._parseResp(binData)
-#                    _,ack,cmd_set,cmd_id,ret_code_bin = _readResponse(binData, self.showMessages)                
+                    _,ack,cmd_set,cmd_id,ret_code_bin = tempObj._parseResp(binData)           
     
                     if ack == "ACK (response)" and cmd_set == "General" and cmd_id == "3":
                         ret_code = int.from_bytes(ret_code_bin[0], byteorder='little')
