@@ -23,4 +23,4 @@ numpy      (currently used for simple math operations but future versions will h
 ```
 
 
-Check out the livox_controller_demo.py file for complete details on how to use the openpylivox v1.0 library
+Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for complete details on how to use the openpylivox v1.0 library
