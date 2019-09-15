@@ -19,7 +19,5 @@ NOTES:
 PYTHON DEPENDENCIES:
 - crcmod     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(used for computing the CRC16 and CRC32 request/response packet checks)
 - numpy      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(currently used for simple math operations but future versions will heavily use np)
-
-
-
+<br><br>
 Check out the livox_controller_demo.py file for complete details on how to use the openpylivox v1.0 library
