@@ -14,7 +14,7 @@ Python3 driver for Livox lidar sensors
   - 03.03.0004 (noise filtering - strict)
   - 03.03.0005 (short blind-zone)
   - 03.05.0000 to 03.06.0000 (standard versions)
-- The CSV output file's header record allows the point cloud data to be easily opened in the <b>amazing</b> open source software CloudCompare (download at [cloudcompare.org]("http://cloudcompare.org"))
+- The CSV output file's header record allows the point cloud data to be easily opened in the <b>amazing</b> open source software CloudCompare (download at https://cloudcompare.org)
 
 *PYTHON DEPENDENCIES:*
 - crcmod     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(used for computing the CRC16 and CRC32 request/response packet checks)
