@@ -17,8 +17,10 @@ Python3 driver for Livox lidar sensors
 - The CSV output file's header record allows the point cloud data to be easily opened in the <b>amazing</b> open source software CloudCompare (download at https://cloudcompare.org)
 
 *PYTHON DEPENDENCIES:*
-- crcmod     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(used for computing the CRC16 and CRC32 request/response packet checks)
-- numpy      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(currently used for simple math operations but future versions will heavily use np)
+```
+crcmod     (used for computing the CRC16 and CRC32 request/response packet checks)
+numpy      (currently used for simple math operations but future versions will heavily use np)
+```
 
 
 Check out the livox_controller_demo.py file for complete details on how to use the openpylivox v1.0 library
