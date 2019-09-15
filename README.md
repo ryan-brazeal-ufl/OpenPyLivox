@@ -16,6 +16,8 @@ Python3 driver for Livox lidar sensors
   - 03.05.0000 to 03.06.0000 (standard versions)
 - The CSV output file's header record allows the point cloud data to be easily opened in the <b>amazing</b> open source software, CloudCompare (download at https://cloudcompare.org)
 
+```//X,Y,Z,Inten-sity,Time,ReturnNum      (ReturnNum is only included when using firmwares 03.03.0001 or .0002)```
+
 *PYTHON DEPENDENCIES:*
 ```
 crcmod     (used for computing the CRC16 and CRC32 request/response packet checks)
