@@ -9,4 +9,5 @@ setup(
     description='Python3 driver for Livox lidar sensors',
     packages=find_packages(),    
     install_requires=['numpy >= 1.15.4', 'crcmod >= 1.7.0'],
+    python_requires='>=3.5',
 )
