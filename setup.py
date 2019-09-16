@@ -7,6 +7,6 @@ setup(
     author='Ryan Brazeal',
     author_email='ryan.brazeal@ufl.edu',
     description='Python3 driver for Livox lidar sensors',
-    packages=find_packages(crcmod, numpy),    
+    packages=find_packages(),    
     install_requires=['numpy >= 1.15.4', 'crcmod >= 1.7.0'],
 )
