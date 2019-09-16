@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='openpylivox',
+    name='openpylivox_pkg',
     version='1.0.0',
     url='https://github.com/ryan-brazeal-ufl/openpylivox',
     author='Ryan Brazeal',
