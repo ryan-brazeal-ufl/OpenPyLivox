@@ -1,7 +1,7 @@
 # OpenPyLivox
 Python3 driver for Livox lidar sensors
 
-***Full documentation to follow soon!***
+***See the [Wiki](./wiki) Pages for complete documentation (WORK IN PROGRESS)!***
 
 *NOTES:* 
 - OpenPyLivox v1.0 has only been tested using Mid-40 sensors
