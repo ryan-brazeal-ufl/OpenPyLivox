@@ -1,10 +1,10 @@
-# openpylivox
+# OpenPyLivox
 Python3 driver for Livox lidar sensors
 
 ***Full documentation to follow soon!***
 
 *NOTES:* 
-- openpylivox v1.0 has only been tested using Mid-40 sensors
+- OpenPyLivox v1.0 has only been tested using Mid-40 sensors
 - simultaneous operation of multiple Mid-40 sensors have been tested, but NOT using a Livox Hub
 - the library has been tested on Mac OS X, Linux (GalliumOS on HP Chromebook), and Windows 10
 - the library has been tested to work with Livox Mid-40 firmwares:
@@ -25,4 +25,4 @@ numpy      (currently used for simple math operations but future versions will h
 ```
 
 
-Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for complete details on how to use the openpylivox v1.0 library
+Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for complete details on how to use the OpenPyLivox v1.0 library
