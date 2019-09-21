@@ -3,6 +3,8 @@ Python3 driver for Livox lidar sensors
 
 ***See the [Wiki](../../wiki) Pages for complete documentation (WORK IN PROGRESS)!***
 
+Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for complete details on how to use the OpenPyLivox v1.0 library
+
 *NOTES:* 
 - OpenPyLivox v1.0 has only been tested using Mid-40 sensors
 - simultaneous operation of multiple Mid-40 sensors have been tested, but NOT using a Livox Hub
@@ -20,5 +22,10 @@ Python3 driver for Livox lidar sensors
 
 **Quirky Fact:** Intensity (i.e., called Reflectivity in the Livox documentation) has a hyphen in the CSV header record in order to 'trick' CloudCompare into assigning the field as a scalar type by default. This enables displaying the point cloud in CloudCompare using a more visually appealing colour spectrum. It also provides a way to (possibly) help filter out some unwanted noisy data.
 
-
-Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for complete details on how to use the OpenPyLivox v1.0 library
+<table style="border:0px;">
+  <tr style="border:0px;">
+    <td style="border:0px;"><img src="./images/image1_rs.png"></td>
+    <td style="border:0px;"><img src="./images/image2_rs.png"></td>
+  </tr>
+</table>
+  
