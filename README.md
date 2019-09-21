@@ -20,7 +20,7 @@ Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for co
 
 `//X,Y,Z,Inten-sity,Time,ReturnNum`      (ReturnNum is only included when using firmwares 03.03.0001 or .0002)
 
-**Quirky Fact:** Intensity (aka. Reflectivity in the Livox documentation) has a hyphen in the CSV header record in order to 'trick' CloudCompare into assigning the field as a scalar type by default. This enables displaying the point cloud in CloudCompare using a more visually appealing colour spectrum. It also provides a way to (possibly) help filter out some unwanted noisy data.
+**Quirky Fact:** Intensity (a.k.a., Reflectivity in the Livox documentation) has a hyphen in the CSV header record in order to 'trick' CloudCompare into assigning the field as a scalar type by default. This enables displaying the point cloud in CloudCompare using a more visually appealing colour spectrum (e.g., left image below). It also provides a way to (possibly) help filter out some unwanted noisy data. Of course, the colour scheme can be changed to many other options, after importing the point cloud in CloudCompare (e.g., greyscale in right image below)
 
 <table style="border:0px;">
   <tr style="border:0px;">
