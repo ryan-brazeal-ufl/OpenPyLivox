@@ -14,15 +14,10 @@ Python3 driver for Livox lidar sensors
   - 03.03.0004 (noise filtering - strict)
   - 03.03.0005 (short blind-zone)
   - 03.05.0000 to 03.06.0000 (standard versions)
-- The CSV output file's header record allows the point cloud data to be easily opened in the <b>amazing</b> open source software, CloudCompare (download at https://cloudcompare.org)
+- The CSV output file's header record, allows the point cloud data to be easily opened in the <b>amazing</b> open source software, CloudCompare (download at https://cloudcompare.org)
 
-```//X,Y,Z,Inten-sity,Time,ReturnNum      (ReturnNum is only included when using firmwares 03.03.0001 or .0002)```
-
-*PYTHON DEPENDENCIES:*
-```
-crcmod     (used for computing the CRC16 and CRC32 request/response packet checks)
-numpy      (currently used for simple math operations but future versions will heavily use np)
-```
+`//X,Y,Z,Inten-sity,Time,ReturnNum`      (ReturnNum is only included when using firmwares 03.03.0001 or .0002)<br>
+**Quirky Fact:** Intensity (i.e., called Reflectivity in the Livox documentation) has a hyphen in the CSV header record in order to 'trick' CloudCompare into using the field as a scalar, rather than a grey value. This enables displaying the point cloud data in CloudCompare using a more visually appealing colour spectrum. 
 
 
 Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for complete details on how to use the OpenPyLivox v1.0 library
