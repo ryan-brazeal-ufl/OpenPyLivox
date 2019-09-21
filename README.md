@@ -7,7 +7,7 @@ Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for co
 
 *NOTES:* 
 - OpenPyLivox v1.0 has only been tested using Mid-40 sensors
-- simultaneous operation of multiple Mid-40 sensors have been tested, but NOT using a Livox Hub
+- simultaneous operation of multiple Mid-40 sensors has been tested, but NOT using a Livox Hub
 - the library has been tested on Mac OS X, Linux (GalliumOS on HP Chromebook), and Windows 7 and 10
 - the library has been tested to work with Livox Mid-40 firmwares:
   - 03.03.0001 (double return)
