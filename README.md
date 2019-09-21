@@ -34,4 +34,4 @@ Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for a 
 </table>
 
 ## Change Log:
-- 
+- v1.0 released **FRIDAY** Sept. **13th** 2019
