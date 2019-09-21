@@ -1,5 +1,9 @@
 # OpenPyLivox
-Python3 driver for Livox lidar sensors
+The ***unofficial*** Python3 driver for Livox lidar sensors ;)
+
+The OpenPyLivox library is a near complete, fully pythonic, implementation of the Livox SDK. This means that almost all the functionality available within official Livox software (e.g., Livox-Viewer) and their C++ based API, has been included here within the OpenPyLivox library. *Ok, ok ... maybe not quite as cool or as functional as the Livox-Viewer, ... yet!*
+
+This library and associated documentation, is designed for **ANYONE and EVERYONE** to be able to use it. From students and teachers interested in using lidar/laser scanning in STEM curriculum or projects, to researchers investigating lidar for autonomous vehicle/robot navigation!
 
 ***See the [Wiki](../../wiki) Pages for complete documentation (WORK IN PROGRESS)!***
 
