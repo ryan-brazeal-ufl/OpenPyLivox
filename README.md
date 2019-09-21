@@ -7,7 +7,7 @@ This library and associated documentation, is designed for **ANYONE and EVERYONE
 
 ***See the [Wiki](../../wiki) Pages for complete documentation (WORK IN PROGRESS)!***
 
-Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for a very detailed example on how to use the OpenPyLivox v1.0 library to control and capture point cloud data from a single Livox Mid-40 sensor, as well as from multiple Livox Mid-40 sensors simultaneously!
+Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for a very detailed example on how to use the OpenPyLivox library to control and capture point cloud data from a single Livox Mid-40 sensor, as well as from multiple Livox Mid-40 sensors simultaneously!
 
 *NOTES:* 
 - OpenPyLivox v1.0 has only been tested using Mid-40 sensors
