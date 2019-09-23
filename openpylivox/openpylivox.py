@@ -1317,7 +1317,7 @@ class openpylivox(object):
                     if ack == "ACK (response)" and cmd_set == "General" and cmd_id == "4":
                         ret_code = int.from_bytes(ret_code_bin[0], byteorder='little')
                         if ret_code == 1:
-                            if self.showMessages: print("   " + self._sensorIP + " --> FAILED to stop data sampling")
+                            if self.showMessages: print("   " + self._sensorIP + " --> FAILED to stop data stream")
                         else:
                             self._isData = False
                             if self._captureStream is not None:
@@ -1326,7 +1326,7 @@ class openpylivox(object):
                             self._isWriting = False
                             time.sleep(0.1)
                     else:
-                        if self.showMessages: print("   " + self._sensorIP + " --> incorrect stop data sampling response")
+                        if self.showMessages: print("   " + self._sensorIP + " --> incorrect stop data stream response")
             else:
                 if self.showMessages: print("   " + self._sensorIP + " --> data stream already stopped")
         else:
