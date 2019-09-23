@@ -14,11 +14,7 @@ Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for a 
 - Simultaneous operation of multiple Mid-40 sensors has been tested, but NOT using a Livox Hub
 - The library has been tested on Mac OS X, Linux (GalliumOS on HP Chromebook), and Windows 7 and 10
 - The library has been tested to work with Livox Mid-40 firmwares:
-  - 03.03.0001 (double return)
-  - 03.03.0002 (triple return)
-  - 03.03.0003 (noise filtering)
-  - 03.03.0004 (noise filtering - strict)
-  - 03.03.0005 (short blind-zone)
+  - 03.03.0001 to 03.03.0005 (all [special Livox firmwares](https://github.com/Livox-SDK/Special-Firmwares-for-Livox-LiDARs), including multiple returns)
   - 03.05.0000 to 03.06.0000 (standard versions)
 - The CSV output file's header record, allows the point cloud data to be easily opened in the <b>amazing</b> open source software, CloudCompare (download at https://cloudcompare.org)
 
