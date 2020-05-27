@@ -8,7 +8,7 @@ Started on Mon. May 13th 2019
 @email: ryan.brazeal@ufl.edu
 
 Program Name: livox_controller_demo.py
-Version: 1.0
+Version: 1.0.1
 
 Description: Python3 demo for controlling a single or multiple Livox Mid-40 sensor(s) using openpylivox
 
@@ -20,7 +20,6 @@ import openpylivox as opl
 
 #only used for this demo
 import time
-
 
 
 #demo operations for a single Livox Mid-40 Sensor
@@ -37,11 +36,11 @@ def singleSensorDemo():
     sensor.resetShowMessages()
           
     #easiest to try to automatically set the openpylivox sensor connection parameters and connect
-    connected = sensor.auto_connect()
+#    connected = sensor.auto_connect()
     
     #or if your computer has multiple IP address and the correct IP is not being automatically determined
     #you can force the computer IP to a manual address
-#    connected = sensor.auto_connect("192.168.1.20")
+    connected = sensor.auto_connect("192.168.1.20")
 
     #or manually define all IP addresses and ports (still need to properly configure your IP, Subnet, etc. on your computer)
                              #  computer IP       sensorIP    data port  command port
@@ -62,7 +61,7 @@ def singleSensorDemo():
         sensor.showMessages = False
         
         #set the output coordinate system to Spherical
-        sensor.setSphericalCS()
+#        sensor.setSphericalCS()
         
         #set the output coordinate system to Cartesian
         sensor.setCartesianCS()
@@ -83,7 +82,7 @@ def singleSensorDemo():
     
         #set the sensor's extrinsic parameters to specific values
         #(*** IMPORTANT: does not affect raw point cloud data stream, seems to only be used in Livox-Viewer? ***)
-        sensor.setExtrinsicTo(x, y, z, roll, pitch, yaw)
+#        sensor.setExtrinsicTo(x, y, z, roll, pitch, yaw)
         
         #the sensor's extrinsic parameters can be returned as a list of floats
         extParams = sensor.extrinsicParameters()
@@ -109,15 +108,18 @@ def singleSensorDemo():
        
         ##########################################################################################
         
-        #start data stream
-        sensor.dataStart()
+        #start data stream (inherently this means the point cloud data is first stored in memory before being written to file resulting in POOR PERFORMANCE)
+#        sensor.dataStart()  #works ok for short duration datasets
+        
+        #start data stream (real-time writing of point cloud data to a CSV file resulting in IMPROVED PERFORMANCE)
+        sensor.dataStart_RT()
         
         #the sensor's lidar status codes can be returned as a list of integers
-        status = sensor.lidarStatusCodes()
+#        status = sensor.lidarStatusCodes()
         
-        filePathAndName = "points.csv"  #IMPORTANT: watch for OS specific path behaviour
-        secsToWait = 0.5                #seconds, time delayed data capture start
-        duration = 10.0                 #seconds, zero (0) specifies an indefinite duration
+        filePathAndName = "test.csv"  #IMPORTANT: watch for OS specific path behaviour (future update will include a python package to handle this automatically)
+        secsToWait = 1.0                #seconds, time delayed data capture start
+        duration = 300.0                 #seconds, zero (0) specifies an indefinite duration
         
         #capture the data stream and save it to a CSV text file
         #(*** IMPORTANT: this command starts a new thread, so the current program (thread) needs to exist for the 'duration' ***)
@@ -127,13 +129,14 @@ def singleSensorDemo():
         while True:
             # 1 + 1 = 2
             
-#            time.sleep(2.5)   #example of time < (duration + secsToWait), therefore early data capture stop
-            #close the output .CSV file, even if duration has not occurred (ideally used when duration = 0)
+#            time.sleep(3)   #example of time < (duration + secsToWait), therefore early data capture stop
+#            #close the output .CSV file, even if duration has not occurred (ideally used when duration = 0)
 #            sensor.closeCSV()
+#            break
         
             #exit loop when capturing is complete (*** IMPORTANT: ignores (does not check) sensors with duration set to 0)
             if sensor.doneCapturing():
-                break     
+                break
         
         #################################################################################################################
         ##### NOTE: Any one of the following commands with also close the output .CSV file (if still being written) #####
@@ -143,13 +146,16 @@ def singleSensorDemo():
         sensor.dataStop()
     
         #if you want to put the lidar in stand-by mode, not sure exactly what this does, lidar still spins?
-        sensor.lidarStandBy()
+#        sensor.lidarStandBy()
     
         #if you want to stop the lidar from spinning (ie., lidar to power-save mode) 
         sensor.lidarSpinDown()
             
         #properly disconnect from the sensor
         sensor.disconnect()
+        
+    else:
+        print("not connected")
 
 
 
@@ -167,11 +173,12 @@ def multipleSensorsDemo():
         sensor = opl.openpylivox(True)
         
         #auto find and connect to a sensor
-        connected = sensor.auto_connect()
+        connected = sensor.auto_connect("192.168.1.20")
         
         if connected:
             #initial commands for each sensor
-            sensor.setCartesianCS()
+#            sensor.setCartesianCS()
+            sensor.setSphericalCS()
             sensor.setRainFogSuppression(False)
             
             print()     #just for demo readability purposes
@@ -190,17 +197,18 @@ def multipleSensorsDemo():
             
         #start all their data streams
         for i in range(0, len(sensors)):
-            sensors[i].dataStart()
+#            sensors[i].dataStart()
+            sensors[i].dataStart_RT()
         
         print()     #just for demo readability purposes
             
         #save data from all the sensors to individual CSV files, using sensor's serial # as filename
         for i in range(0, len(sensors)):
             sensors[i].showMessages = False
-            filename = sensors[i].serialNumber()
+            filename = sensors[i].serialNumber() + "_sph"
             sensors[i].resetShowMessages()
             
-            sensors[i].saveDataToCSV(filename, 0.5, 5.0)
+            sensors[i].saveDataToCSV(filename, 0.5, 10.0)
         
         print()     #just for demo readability purposes
         
