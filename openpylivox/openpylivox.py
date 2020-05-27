@@ -8,14 +8,15 @@ Started on Mon. May 13th 2019
 @email: ryan.brazeal@ufl.edu
 
 Program Name: openpylivox.py
-Version: 1.0
+Version: 1.0.1
 
 Description: Python3 driver for UDP Communications with Lixov Mid-40 Lidar sensor
 
 Livox SDK link: https://github.com/Livox-SDK/Livox-SDK/wiki/Livox-SDK-Communication-Protocol
 
 Change Log:
-    - v1.0 release Sept. 13th 2019
+    - v1.0.0 release Sept. 13th 2019
+    - v1.0.1 release May 27th 2020
     
 
 """
@@ -98,12 +99,14 @@ class _heartbeatThread(object):
 
 class _dataCaptureThread(object):
     
-    def __init__(self, sensorIP, receive_socket, filePathAndName, secsToWait, duration, firmwareType, showMessages):
+    def __init__(self, sensorIP, receive_socket, filePathAndName, fileType, secsToWait, duration, firmwareType, showMessages):
         
         self.startTime = -1
         self.sensorIP = sensorIP
         self.r_socket = receive_socket
         self.filePathAndName = filePathAndName
+        #fileType 0 = Stored ASCII, 1 = Real-time ASCII
+        self.fileType = fileType
         self.secsToWait = secsToWait
         self.duration = duration
         self.firmwareType = firmwareType
@@ -124,8 +127,14 @@ class _dataCaptureThread(object):
         
         if duration == 0:
             self.duration = 126230400   #4 years of time (so technically not indefinite)
-        
-        self.thread = threading.Thread(target=self.run, args=())
+
+        self.thread = None
+
+        if self.fileType == 1:
+            self.thread = threading.Thread(target=self.run_realtime_csv, args=())
+        else:
+            self.thread = threading.Thread(target=self.run, args=())
+
         self.thread.daemon = True
         self.thread.start()                     
 
@@ -139,7 +148,8 @@ class _dataCaptureThread(object):
         while True:
 
             if self.started:
-                if select.select([self.r_socket],[],[],0)[0]:
+                selectTest = select.select([self.r_socket],[],[],0)
+                if selectTest[0]:
                     data_pc, addr = self.r_socket.recvfrom(1500)
                     version = int.from_bytes(data_pc[0:1], byteorder='little')
                     self.dataType = int.from_bytes(data_pc[9:10], byteorder='little')
@@ -573,6 +583,350 @@ class _dataCaptureThread(object):
             else:
                 if self.showMessages: print("   " + self.sensorIP + " --> Incorrect lidar packet version")               
 
+   
+    def run_realtime_csv(self):
+        
+        #read point cloud data packet to get packet version and datatype
+        #keep looping to 'consume' data that we don't want included in the captured point cloud data
+
+        breakByCapture = False
+        while True:
+
+            if self.started:
+                selectTest = select.select([self.r_socket],[],[],0)
+                if selectTest[0]:
+                    data_pc, addr = self.r_socket.recvfrom(1500)
+                    version = int.from_bytes(data_pc[0:1], byteorder='little')
+                    self.dataType = int.from_bytes(data_pc[9:10], byteorder='little')
+                    timestamp_type = int.from_bytes(data_pc[8:9], byteorder='little')
+                    timestamp1 = self.getTimestamp(data_pc[10:18], timestamp_type)
+                    self.updateStatus(data_pc[4:8])
+                    if self.isCapturing:
+                        self.startTime = timestamp1
+                        breakByCapture = True
+                        break
+            else:
+                break
+
+        if breakByCapture:
+
+            #check data packet is as expected (first byte anyways)
+            if version == 5:
+    
+                #delayed start to capturing data check (secsToWait parameter)
+                timestamp2 = self.startTime
+                while True:
+                    if self.started:
+                        timeSinceStart = timestamp2 - self.startTime
+                        if timeSinceStart <= self.secsToWait:
+                            #read data from receive buffer and keep 'consuming' it
+                            if select.select([self.r_socket],[],[],0)[0]:
+                                data_pc, addr = self.r_socket.recvfrom(1500)
+                                timestamp_type = int.from_bytes(data_pc[8:9], byteorder='little')
+                                timestamp2 = self.getTimestamp(data_pc[10:18], timestamp_type)
+                                self.updateStatus(data_pc[4:8])
+                        else:
+                            self.startTime = timestamp2
+                            break
+                    else:
+                         break   
+                
+                if self.showMessages: print("   " + self.sensorIP + " --> CAPTURING DATA...")
+                
+                #duration adjustment (trying to get exactly 100,000 points / sec)
+                if self.duration != 126230400:
+                    if self.firmwareType == 1:
+                        self.duration += (0.001 * (self.duration / 2.0))
+                    elif self.firmwareType == 2:
+                        self.duration += (0.0005 * (self.duration / 2.0))
+                    elif self.firmwareType == 3:
+                        self.duration += (0.00055 * (self.duration / 2.0))
+                
+                timestamp_sec = self.startTime
+                
+                if self.showMessages: print("   " + self.sensorIP + " --> writing real-time data to file: " + self.filePathAndName)
+                csvFile = open(self.filePathAndName,"w",1)
+                    
+                numPts = 0
+                nullPts = 0
+                
+                #write header info
+                if self.firmwareType == 1:  #single return firmware
+                    if self.dataType == 0: #Cartesian
+                        csvFile.write("//X,Y,Z,Inten-sity,Time\n")
+                    elif self.dataType == 1: #Spherical
+                        csvFile.write("//Distance,Zenith,Azimuth,Inten-sity,Time\n")
+                elif self.firmwareType == 2 or self.firmwareType == 3:  #double or triple return firmware
+                    if self.dataType == 0: #Cartesian
+                        csvFile.write("//X,Y,Z,Inten-sity,Time,ReturnNum\n")
+                    elif self.dataType == 1: #Spherical
+                        csvFile.write("//Distance,Zenith,Azimuth,Inten-sity,Time,ReturnNum\n")
+                
+                #main loop that captures the desired point cloud data 
+                while True:
+                    if self.started:
+                        timeSinceStart = timestamp_sec - self.startTime
+                    
+                        if timeSinceStart <= self.duration:
+                            
+                            #read data from receive buffer
+                            if select.select([self.r_socket],[],[],0)[0]:
+                                data_pc, addr = self.r_socket.recvfrom(1500)
+                                
+#                                version = int.from_bytes(data_pc[0:1], byteorder='little')
+#                                slot_id = int.from_bytes(data_pc[1:2], byteorder='little')
+#                                lidar_id = int.from_bytes(data_pc[2:3], byteorder='little')
+                                
+                                #byte 3 is reserved
+                                
+                                #update lidar status information
+                                self.updateStatus(data_pc[4:8])
+                                
+                                timestamp_type = int.from_bytes(data_pc[8:9], byteorder='little')   
+                                timestamp_sec = self.getTimestamp(data_pc[10:18], timestamp_type)
+                                
+                                bytePos = 18
+                                
+                                #single return firmware (most common)
+                                if self.firmwareType == 1:
+                                    #to account for first point's timestamp being increment in the loop
+                                    timestamp_sec -= 0.00001
+                                    
+                                    #Cartesian Coordinate System
+                                    if self.dataType == 0:
+                                        for i in range(0,100):
+                                            
+                                            # X coordinate
+                                            coord1 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4
+                                            
+                                            # Y coordinate
+                                            coord2 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4
+                                            
+                                            # Z coordinate
+                                            coord3 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4 
+                                            
+                                            #intensity
+                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            bytePos += 1
+                                            
+                                            #timestamp
+                                            timestamp_sec += 0.00001
+                                            
+                                            if coord2:
+                                                numPts += 1
+                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "\n")
+                                            else:
+                                                nullPts += 1
+                                    
+                                    #Spherical Coordinate System
+                                    elif self.dataType == 1:
+                                        for i in range(0,100):
+                                            
+                                            # Distance coordinate
+                                            coord1 = "{0:.3f}".format(float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4
+                                            
+                                            # Zenith coordinate
+                                            coord2 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            bytePos += 2
+                                            
+                                            # Azimuth coordinate
+                                            coord3 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            bytePos += 2 
+                                            
+                                            #intensity
+                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            bytePos += 1
+                                            
+                                            #timestamp
+                                            timestamp_sec += 0.00001
+                                            
+                                            if coord1:
+                                                numPts += 1
+                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "\n")
+                                            else:
+                                                nullPts += 1
+                                         
+                                #double return firmware
+                                elif self.firmwareType == 2:
+                                    #to account for first point's timestamp being increment in the loop
+                                    timestamp_sec -= 0.00001
+                                
+                                    #Cartesian Coordinate System
+                                    if self.dataType == 0:
+                                        for i in range(0,100):
+                                            returnNum = 1
+                                            
+                                            # X coordinate
+                                            coord1 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4
+                                            
+                                            # Y coordinate
+                                            coord2 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4
+                                            
+                                            # Z coordinate
+                                            coord3 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4 
+                                            
+                                            #intensity
+                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            bytePos += 1
+                                            
+                                            zeroORtwo = i % 2
+                                            
+                                            #timestamp
+                                            timestamp_sec += float(not(zeroORtwo)) * 0.00001
+                                            
+                                            #return number
+                                            returnNum += zeroORtwo * 1
+                                            
+                                            if coord2:
+                                                numPts += 1
+                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                            else:
+                                                nullPts += 1
+                        
+                                         
+                                    #Spherical Coordinate System
+                                    elif self.dataType == 1:
+                                        for i in range(0,100):
+                                            returnNum = 1
+                                            
+                                             # Distance coordinate
+                                            coord1 = "{0:.3f}".format(float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4
+                                            
+                                            # Zenith coordinate
+                                            coord2 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            bytePos += 2
+                                            
+                                            # Azimuth coordinate
+                                            coord3 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            bytePos += 2 
+                                            
+                                            #intensity
+                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            bytePos += 1
+                                            
+                                            zeroORtwo = i % 2
+                                            
+                                            #timestamp
+                                            timestamp_sec += float(not(zeroORtwo)) * 0.00001
+                                            
+                                            #return number
+                                            returnNum += zeroORtwo * 1
+                                            
+                                            if coord1:
+                                                numPts += 1
+                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                            else:
+                                                nullPts += 1
+                                            
+                                
+                                #triple return firmware
+                                elif self.firmwareType == 3:
+                                    #to account for first point's timestamp being increment in the loop
+                                    timestamp_sec -= 0.000016666
+                                
+                                    #Cartesian Coordinate System
+                                    if self.dataType == 0:
+                                        for i in range(0,100):
+                                            returnNum = 1
+                                            
+                                            # X coordinate
+                                            coord1 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4
+                                            
+                                            # Y coordinate
+                                            coord2 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4
+                                            
+                                            # Z coordinate
+                                            coord3 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4 
+                                            
+                                            #intensity
+                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            bytePos += 1
+                                            
+                                            zeroORoneORtwo = i % 3
+                                            
+                                            #timestamp
+                                            timestamp_sec += float(not(zeroORoneORtwo)) * 0.000016666
+                                            
+                                            #return number
+                                            returnNum += zeroORoneORtwo * 1
+                                            
+                                            if coord2:
+                                                numPts += 1
+                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                            else:
+                                                nullPts += 1
+                                        
+                                         
+                                    #Spherical Coordinate System
+                                    elif self.dataType == 1:
+                                        for i in range(0,100):
+                                            returnNum = 1
+                                            
+                                             # Distance coordinate
+                                            coord1 = "{0:.3f}".format(float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            bytePos += 4
+                                            
+                                            # Zenith coordinate
+                                            coord2 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            bytePos += 2
+                                            
+                                            # Azimuth coordinate
+                                            coord3 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            bytePos += 2 
+                                            
+                                            #intensity
+                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            bytePos += 1
+                                            
+                                            zeroORoneORtwo = i % 3
+                                            
+                                            #timestamp
+                                            timestamp_sec += float(not(zeroORoneORtwo)) * 0.000016666
+                                            
+                                            #return number
+                                            returnNum += zeroORoneORtwo * 1
+                                            
+                                            if coord1:
+                                                numPts += 1
+                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                            else:
+                                                nullPts += 1
+                    
+                        
+                        #duration check (exit point)
+                        else:
+                            self.started = False
+                            self.isCapturing = False
+                            break
+                    #thread still running check (exit point)
+                    else:
+                        break
+                
+
+    
+                self.numPts = numPts
+                self.nullPts = nullPts
+                    
+                if self.showMessages: 
+                    print("   " + self.sensorIP + " --> closed CSV file: " + self.filePathAndName)
+                    print("                    (points: " + str(numPts) + " good, " + str(nullPts) + " null, " + str(numPts + nullPts) + " total)")
+                
+                csvFile.close()
+                
+            else:
+                if self.showMessages: print("   " + self.sensorIP + " --> Incorrect lidar packet version") 
+    
     
     def getTimestamp(self, data_pc, timestamp_type):
         
@@ -668,7 +1022,9 @@ class openpylivox(object):
     _CMD_RAIN_FOG_OFF = bytes.fromhex((b'AA011000000000B8090103004441D73E').decode('ascii'))
 
     _SPECIAL_FIRMWARE_TYPE_DICT = {"03.03.0001": 2,
-                                   "03.03.0002": 3}
+                                   "03.03.0002": 3,
+                                   "03.03.0006": 2,
+                                   "03.03.0007": 3}
     
     def __init__(self, showMessages = False):
         
@@ -1272,7 +1628,39 @@ class openpylivox(object):
         
         if self._isConnected:
             if not self._isData:
-                self._captureStream = _dataCaptureThread(self._sensorIP, self._dataSocket, "", 0, 0, 0, self.showMessages)
+                self._captureStream = _dataCaptureThread(self._sensorIP, self._dataSocket, "",0 ,0, 0, 0, self.showMessages)
+                time.sleep(0.12)
+                self._waitForIdle()
+                self._cmdSocket.sendto(self._CMD_DATA_START,(self._sensorIP, 65000))
+                if self.showMessages: print("   " + self._sensorIP + " <-- sent start data stream request")
+            
+                #check for proper response from data start request
+                if select.select([self._cmdSocket],[],[],0.1)[0]:
+                    binData, addr = self._cmdSocket.recvfrom(16)
+                    _,ack,cmd_set,cmd_id,ret_code_bin = self._parseResp(binData)
+    
+                    if ack == "ACK (response)" and cmd_set == "General" and cmd_id == "4":
+                        ret_code = int.from_bytes(ret_code_bin[0], byteorder='little')
+                        if ret_code == 1:
+                            if self.showMessages: print("   " + self._sensorIP + " --> FAILED to start data stream")
+                            if self._captureStream is not None:
+                                self._captureStream.stop()
+                            time.sleep(0.1)
+                            self._isData = False
+                        else:
+                            self._isData = True
+                    else:
+                        if self.showMessages: print("   " + self._sensorIP + " --> incorrect start data stream response")
+            else:
+                if self.showMessages: print("   " + self._sensorIP + " --> data stream already started")
+        else:
+            if self.showMessages: print("Not connected to Mid-40 sensor at IP: " + self._sensorIP)
+            
+    def dataStart_RT(self):
+        
+        if self._isConnected:
+            if not self._isData:
+                self._captureStream = _dataCaptureThread(self._sensorIP, self._dataSocket, "",1 ,0, 0, 0, self.showMessages)
                 time.sleep(0.12)
                 self._waitForIdle()
                 self._cmdSocket.sendto(self._CMD_DATA_START,(self._sensorIP, 65000))
@@ -1634,7 +2022,7 @@ class openpylivox(object):
                                         
                                         if filePathAndName[-4:].upper() != ".CSV":
                                             filePathAndName += ".csv"
-                                            
+
                                         self._isWriting = True
                                         self._captureStream.filePathAndName = filePathAndName
                                         self._captureStream.secsToWait = secsToWait
@@ -1647,7 +2035,7 @@ class openpylivox(object):
                     if self.showMessages: print("   " + self._sensorIP + " --> unknown firmware version")
             else:
                 if self.showMessages: print("   " + self._sensorIP + " --> WARNING: data stream not started, no CSV file created")
-            
+
         
     def closeCSV(self):
         if self._isConnected:
