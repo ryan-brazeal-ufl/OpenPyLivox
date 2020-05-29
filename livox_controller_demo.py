@@ -8,7 +8,7 @@ Started on Mon. May 13th 2019
 @email: ryan.brazeal@ufl.edu
 
 Program Name: livox_controller_demo.py
-Version: 1.0.1
+Version: 1.0.2
 
 Description: Python3 demo for controlling a single or multiple Livox Mid-40 sensor(s) using openpylivox
 
@@ -108,39 +108,52 @@ def singleSensorDemo():
        
         ##########################################################################################
         
-        #start data stream (inherently this means the point cloud data is first stored in memory before being written to file resulting in POOR PERFORMANCE)
+        #start data stream (inherently this means the point cloud data is first stored in memory before being written to file, resulting in POOR PERFORMANCE)
+        #   ***** DEPRECATED as of version 1.0.1 use .dataStart_RT() instead *****
 #        sensor.dataStart()  #works ok for short duration datasets
         
-        #start data stream (real-time writing of point cloud data to a CSV file resulting in IMPROVED PERFORMANCE)
-        sensor.dataStart_RT()
+        #start data stream (real-time writing of point cloud data to a comma delimited ASCII file, resulting in IMPROVED PERFORMANCE)
+#        sensor.dataStart_RT()
+        
+        #start data stream (real-time writing of point cloud data to a BINARY file, resulting in MUCH IMPROVED PERFORMANCE)
+        sensor.dataStart_RT_B()
         
         #the sensor's lidar status codes can be returned as a list of integers
 #        status = sensor.lidarStatusCodes()
         
-        filePathAndName = "test.csv"  #IMPORTANT: watch for OS specific path behaviour (future update will include a python package to handle this automatically)
+        filePathAndName = "test.bin"  #IMPORTANT: watch for OS specific path behaviour (future update will include a python package to handle this automatically)
         secsToWait = 1.0                #seconds, time delayed data capture start
-        duration = 300.0                 #seconds, zero (0) specifies an indefinite duration
+        duration = 10.0                 #seconds, zero (0) specifies an indefinite duration
         
-        #capture the data stream and save it to a CSV text file
         #(*** IMPORTANT: this command starts a new thread, so the current program (thread) needs to exist for the 'duration' ***)
-        sensor.saveDataToCSV(filePathAndName, secsToWait, duration)
+        #capture the data stream and save it to a CSV text file
+        #   ***** DEPRECATED as of version 1.0.2 use .saveDataToFile instead *****
+#        sensor.saveDataToCSV(filePathAndName, secsToWait, duration)
+        
+        #(*** IMPORTANT: this command starts a new thread, so the current program (thread) needs to exist for the 'duration' ***)
+        #capture the data stream and save it to a file
+        sensor.saveDataToFile(filePathAndName, secsToWait, duration)
         
         #simulate other operations being performed
         while True:
             # 1 + 1 = 2
             
 #            time.sleep(3)   #example of time < (duration + secsToWait), therefore early data capture stop
-#            #close the output .CSV file, even if duration has not occurred (ideally used when duration = 0)
+
+#            #close the output data file, even if duration has not occurred (ideally used when duration = 0)
+#            #   ***** DEPRECATED as of version 1.0.2 use .closeFile() instead *****
 #            sensor.closeCSV()
+            
+#            sensor.closeFile()
 #            break
         
             #exit loop when capturing is complete (*** IMPORTANT: ignores (does not check) sensors with duration set to 0)
             if sensor.doneCapturing():
                 break
         
-        #################################################################################################################
-        ##### NOTE: Any one of the following commands with also close the output .CSV file (if still being written) #####
-        #################################################################################################################
+        #########################################################################################################
+        ##### NOTE: Any one of the following commands with also close the output data file (if still being written) #####
+        #########################################################################################################
         
         #stop data stream
         sensor.dataStop()
@@ -154,8 +167,11 @@ def singleSensorDemo():
         #properly disconnect from the sensor
         sensor.disconnect()
         
+        #convert BINARY data to CSV file (no harm done if filePathAndName is mistakenly an ASCII CSV file)
+        opl.convertBin2CSV(filePathAndName,deleteBin=False)
+        
     else:
-        print("not connected")
+        print("\n***** Could not connect to a Livox sensor *****\n")
 
 
 
@@ -205,10 +221,12 @@ def multipleSensorsDemo():
         #save data from all the sensors to individual CSV files, using sensor's serial # as filename
         for i in range(0, len(sensors)):
             sensors[i].showMessages = False
-            filename = sensors[i].serialNumber() + "_sph"
+            filename = sensors[i].serialNumber() + "_sph.csv"
             sensors[i].resetShowMessages()
             
-            sensors[i].saveDataToCSV(filename, 0.5, 10.0)
+            #   ***** DEPRECATED as of version 1.0.2 use .saveDataToFile instead *****
+#            sensors[i].saveDataToCSV(filename, 0.5, 10.0)
+            sensors[i].saveDataToFile(filename, 0.5, 10.0)
         
         print()     #just for demo readability purposes
         
