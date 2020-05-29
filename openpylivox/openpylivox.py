@@ -8,7 +8,7 @@ Started on Mon. May 13th 2019
 @email: ryan.brazeal@ufl.edu
 
 Program Name: openpylivox.py
-Version: 1.0.1
+Version: 1.0.2
 
 Description: Python3 driver for UDP Communications with Lixov Mid-40 Lidar sensor
 
@@ -17,6 +17,7 @@ Livox SDK link: https://github.com/Livox-SDK/Livox-SDK/wiki/Livox-SDK-Communicat
 Change Log:
     - v1.0.0 release Sept. 13th 2019
     - v1.0.1 release May 27th 2020
+    - v1.0.2 release May 29th 2020
     
 
 """
@@ -30,10 +31,13 @@ import struct
 import threading
 import time
 import sys
+import os
+
 
 #additional modules
 import crcmod
 import numpy as np     #not heavily used in v1.0 but future version will require it for sure!
+from deprecated import deprecated
 
 
 class _heartbeatThread(object):
@@ -105,7 +109,7 @@ class _dataCaptureThread(object):
         self.sensorIP = sensorIP
         self.r_socket = receive_socket
         self.filePathAndName = filePathAndName
-        #fileType 0 = Stored ASCII, 1 = Real-time ASCII
+        #fileType 0 = Stored ASCII, 1 = Real-time ASCII, 2 = Real-time BINARY
         self.fileType = fileType
         self.secsToWait = secsToWait
         self.duration = duration
@@ -132,6 +136,8 @@ class _dataCaptureThread(object):
 
         if self.fileType == 1:
             self.thread = threading.Thread(target=self.run_realtime_csv, args=())
+        elif self.fileType == 2:
+            self.thread = threading.Thread(target=self.run_realtime_bin, args=())
         else:
             self.thread = threading.Thread(target=self.run, args=())
 
@@ -483,7 +489,7 @@ class _dataCaptureThread(object):
                 lenData = len(coord1s)
                 if lenData > 0:
                 
-                    if self.showMessages: print("   " + self.sensorIP + " --> writing data to file: " + self.filePathAndName)
+                    if self.showMessages: print("   " + self.sensorIP + " --> writing data to ASCII file: " + self.filePathAndName)
                     csvFile = open(self.filePathAndName,"w")
                     
                     numPts = 0
@@ -573,7 +579,7 @@ class _dataCaptureThread(object):
                     self.nullPts = nullPts
                     
                     if self.showMessages: 
-                        print("   " + self.sensorIP + " --> closed CSV file: " + self.filePathAndName)
+                        print("   " + self.sensorIP + " --> closed ASCII file: " + self.filePathAndName)
                         print("                    (points: " + str(numPts) + " good, " + str(nullPts) + " null, " + str(numPts + nullPts) + " total)")
                     csvFile.close()
                 
@@ -644,7 +650,7 @@ class _dataCaptureThread(object):
                 
                 timestamp_sec = self.startTime
                 
-                if self.showMessages: print("   " + self.sensorIP + " --> writing real-time data to file: " + self.filePathAndName)
+                if self.showMessages: print("   " + self.sensorIP + " --> writing real-time data to ASCII file: " + self.filePathAndName)
                 csvFile = open(self.filePathAndName,"w",1)
                     
                 numPts = 0
@@ -697,19 +703,19 @@ class _dataCaptureThread(object):
                                         for i in range(0,100):
                                             
                                             # X coordinate
-                                            coord1 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord1 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4
                                             
                                             # Y coordinate
-                                            coord2 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord2 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4
                                             
                                             # Z coordinate
-                                            coord3 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord3 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4 
                                             
                                             #intensity
-                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
                                             bytePos += 1
                                             
                                             #timestamp
@@ -717,7 +723,7 @@ class _dataCaptureThread(object):
                                             
                                             if coord2:
                                                 numPts += 1
-                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "\n")
+                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.3f}".format(coord2) + "," + "{0:.3f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "\n")
                                             else:
                                                 nullPts += 1
                                     
@@ -726,19 +732,19 @@ class _dataCaptureThread(object):
                                         for i in range(0,100):
                                             
                                             # Distance coordinate
-                                            coord1 = "{0:.3f}".format(float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord1 = float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4
                                             
                                             # Zenith coordinate
-                                            coord2 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            coord2 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
                                             bytePos += 2
                                             
                                             # Azimuth coordinate
-                                            coord3 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            coord3 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
                                             bytePos += 2 
                                             
                                             #intensity
-                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
                                             bytePos += 1
                                             
                                             #timestamp
@@ -746,7 +752,7 @@ class _dataCaptureThread(object):
                                             
                                             if coord1:
                                                 numPts += 1
-                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "\n")
+                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.2f}".format(coord2) + "," + "{0:.2f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "\n")
                                             else:
                                                 nullPts += 1
                                          
@@ -761,19 +767,19 @@ class _dataCaptureThread(object):
                                             returnNum = 1
                                             
                                             # X coordinate
-                                            coord1 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord1 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4
                                             
                                             # Y coordinate
-                                            coord2 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord2 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4
                                             
                                             # Z coordinate
-                                            coord3 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord3 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4 
                                             
                                             #intensity
-                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
                                             bytePos += 1
                                             
                                             zeroORtwo = i % 2
@@ -786,7 +792,7 @@ class _dataCaptureThread(object):
                                             
                                             if coord2:
                                                 numPts += 1
-                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.3f}".format(coord2) + "," + "{0:.3f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
                                             else:
                                                 nullPts += 1
                         
@@ -797,19 +803,19 @@ class _dataCaptureThread(object):
                                             returnNum = 1
                                             
                                              # Distance coordinate
-                                            coord1 = "{0:.3f}".format(float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord1 = float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4
                                             
                                             # Zenith coordinate
-                                            coord2 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            coord2 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
                                             bytePos += 2
                                             
                                             # Azimuth coordinate
-                                            coord3 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            coord3 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
                                             bytePos += 2 
                                             
                                             #intensity
-                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
                                             bytePos += 1
                                             
                                             zeroORtwo = i % 2
@@ -822,7 +828,7 @@ class _dataCaptureThread(object):
                                             
                                             if coord1:
                                                 numPts += 1
-                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.2f}".format(coord2) + "," + "{0:.2f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
                                             else:
                                                 nullPts += 1
                                             
@@ -837,20 +843,20 @@ class _dataCaptureThread(object):
                                         for i in range(0,100):
                                             returnNum = 1
                                             
-                                            # X coordinate
-                                            coord1 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                             # X coordinate
+                                            coord1 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4
                                             
                                             # Y coordinate
-                                            coord2 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord2 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4
                                             
                                             # Z coordinate
-                                            coord3 = "{0:.3f}".format(float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord3 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4 
                                             
                                             #intensity
-                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
                                             bytePos += 1
                                             
                                             zeroORoneORtwo = i % 3
@@ -863,7 +869,7 @@ class _dataCaptureThread(object):
                                             
                                             if coord2:
                                                 numPts += 1
-                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.3f}".format(coord2) + "," + "{0:.3f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
                                             else:
                                                 nullPts += 1
                                         
@@ -874,19 +880,19 @@ class _dataCaptureThread(object):
                                             returnNum = 1
                                             
                                              # Distance coordinate
-                                            coord1 = "{0:.3f}".format(float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0)
+                                            coord1 = float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0
                                             bytePos += 4
                                             
                                             # Zenith coordinate
-                                            coord2 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            coord2 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
                                             bytePos += 2
                                             
                                             # Azimuth coordinate
-                                            coord3 = "{0:.2f}".format(float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0)
+                                            coord3 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
                                             bytePos += 2 
                                             
                                             #intensity
-                                            intensity = str(int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little'))
+                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
                                             bytePos += 1
                                             
                                             zeroORoneORtwo = i % 3
@@ -899,7 +905,7 @@ class _dataCaptureThread(object):
                                             
                                             if coord1:
                                                 numPts += 1
-                                                csvFile.write(coord1 + "," + coord2 + "," + coord3 + "," + intensity + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.2f}".format(coord2) + "," + "{0:.2f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
                                             else:
                                                 nullPts += 1
                     
@@ -914,12 +920,11 @@ class _dataCaptureThread(object):
                         break
                 
 
-    
                 self.numPts = numPts
                 self.nullPts = nullPts
                     
                 if self.showMessages: 
-                    print("   " + self.sensorIP + " --> closed CSV file: " + self.filePathAndName)
+                    print("   " + self.sensorIP + " --> closed ASCII file: " + self.filePathAndName)
                     print("                    (points: " + str(numPts) + " good, " + str(nullPts) + " null, " + str(numPts + nullPts) + " total)")
                 
                 csvFile.close()
@@ -927,7 +932,284 @@ class _dataCaptureThread(object):
             else:
                 if self.showMessages: print("   " + self.sensorIP + " --> Incorrect lidar packet version") 
     
+
+    def run_realtime_bin(self):
+        
+        #read point cloud data packet to get packet version and datatype
+        #keep looping to 'consume' data that we don't want included in the captured point cloud data
+
+        breakByCapture = False
+        while True:
+
+            if self.started:
+                selectTest = select.select([self.r_socket],[],[],0)
+                if selectTest[0]:
+                    data_pc, addr = self.r_socket.recvfrom(1500)
+                    version = int.from_bytes(data_pc[0:1], byteorder='little')
+                    self.dataType = int.from_bytes(data_pc[9:10], byteorder='little')
+                    timestamp_type = int.from_bytes(data_pc[8:9], byteorder='little')
+                    timestamp1 = self.getTimestamp(data_pc[10:18], timestamp_type)
+                    self.updateStatus(data_pc[4:8])
+                    if self.isCapturing:
+                        self.startTime = timestamp1
+                        breakByCapture = True
+                        break
+            else:
+                break
+
+        if breakByCapture:
+
+            #check data packet is as expected (first byte anyways)
+            if version == 5:
     
+                #delayed start to capturing data check (secsToWait parameter)
+                timestamp2 = self.startTime
+                while True:
+                    if self.started:
+                        timeSinceStart = timestamp2 - self.startTime
+                        if timeSinceStart <= self.secsToWait:
+                            #read data from receive buffer and keep 'consuming' it
+                            if select.select([self.r_socket],[],[],0)[0]:
+                                data_pc, addr = self.r_socket.recvfrom(1500)
+                                timestamp_type = int.from_bytes(data_pc[8:9], byteorder='little')
+                                timestamp2 = self.getTimestamp(data_pc[10:18], timestamp_type)
+                                self.updateStatus(data_pc[4:8])
+                        else:
+                            self.startTime = timestamp2
+                            break
+                    else:
+                         break   
+                
+                if self.showMessages: print("   " + self.sensorIP + " --> CAPTURING DATA...")
+                
+                #duration adjustment (trying to get exactly 100,000 points / sec)
+                if self.duration != 126230400:
+                    if self.firmwareType == 1:
+                        self.duration += (0.001 * (self.duration / 2.0))
+                    elif self.firmwareType == 2:
+                        self.duration += (0.0005 * (self.duration / 2.0))
+                    elif self.firmwareType == 3:
+                        self.duration += (0.00055 * (self.duration / 2.0))
+                
+                timestamp_sec = self.startTime
+                
+                if self.showMessages: print("   " + self.sensorIP + " --> writing real-time data to BINARY file: " + self.filePathAndName)
+                binFile = open(self.filePathAndName,"wb")
+                    
+                numPts = 0
+                nullPts = 0
+                
+                #write header info to know how to parse the data later
+                binFile.write(str.encode("OPENPYLIVOX"))
+                binFile.write(struct.pack('<h',self.firmwareType))
+                binFile.write(struct.pack('<h',self.dataType))
+                
+                #main loop that captures the desired point cloud data 
+                while True:
+                    if self.started:
+                        timeSinceStart = timestamp_sec - self.startTime
+                    
+                        if timeSinceStart <= self.duration:
+                            
+                            #read data from receive buffer
+                            if select.select([self.r_socket],[],[],0)[0]:
+                                data_pc, addr = self.r_socket.recvfrom(1500)
+                                
+#                                version = int.from_bytes(data_pc[0:1], byteorder='little')
+#                                slot_id = int.from_bytes(data_pc[1:2], byteorder='little')
+#                                lidar_id = int.from_bytes(data_pc[2:3], byteorder='little')
+                                
+                                #byte 3 is reserved
+                                
+                                #update lidar status information
+                                self.updateStatus(data_pc[4:8])
+                                
+                                timestamp_type = int.from_bytes(data_pc[8:9], byteorder='little')   
+                                timestamp_sec = self.getTimestamp(data_pc[10:18], timestamp_type)
+                                
+                                bytePos = 18
+                                
+                                #single return firmware (most common)
+                                if self.firmwareType == 1:
+                                    #to account for first point's timestamp being increment in the loop
+                                    timestamp_sec -= 0.00001
+                                    
+                                    #Cartesian Coordinate System
+                                    if self.dataType == 0:
+                                        for i in range(0,100):
+
+                                            # Y coordinate (check for non-zero)
+                                            coord2 = struct.unpack('<i',data_pc[bytePos+4:bytePos+8])[0]
+                                            
+                                            #timestamp
+                                            timestamp_sec += 0.00001
+                                            
+                                            if coord2:
+                                                numPts += 1
+                                                binFile.write(data_pc[bytePos:bytePos+13])
+                                                binFile.write(struct.pack('<d',timestamp_sec))
+                                            else:
+                                                nullPts += 1
+                                                
+                                            bytePos += 13
+                                    
+                                    #Spherical Coordinate System
+                                    elif self.dataType == 1:
+                                        for i in range(0,100):
+                                            
+                                            # Distance coordinate (check for non-zero)
+                                            coord1 = struct.unpack('<I',data_pc[bytePos:bytePos+4])[0]
+                                            
+                                            #timestamp
+                                            timestamp_sec += 0.00001
+                                            
+                                            if coord1:
+                                                numPts += 1
+                                                binFile.write(data_pc[bytePos:bytePos+9])
+                                                binFile.write(struct.pack('<d',timestamp_sec))
+                                            else:
+                                                nullPts += 1
+                                                
+                                            bytePos += 9
+                                         
+                                #double return firmware
+                                elif self.firmwareType == 2:
+                                    #to account for first point's timestamp being increment in the loop
+                                    timestamp_sec -= 0.00001
+                                
+                                    #Cartesian Coordinate System
+                                    if self.dataType == 0:
+                                        for i in range(0,100):
+                                            returnNum = 1
+                                            
+                                            # Y coordinate (check for non-zero)
+                                            coord2 = struct.unpack('<i',data_pc[bytePos+4:bytePos+8])[0]
+
+                                            zeroORtwo = i % 2
+                                            
+                                            #timestamp
+                                            timestamp_sec += float(not(zeroORtwo)) * 0.00001
+                                            
+                                            #return number
+                                            returnNum += zeroORtwo * 1
+                                            
+                                            if coord2:
+                                                numPts += 1
+                                                binFile.write(data_pc[bytePos:bytePos+13])
+                                                binFile.write(struct.pack('<d',timestamp_sec))
+                                                binFile.write(str.encode(str(returnNum)))
+                                            else:
+                                                nullPts += 1
+                        
+                                            bytePos += 13
+                                         
+                                    #Spherical Coordinate System
+                                    elif self.dataType == 1:
+                                        for i in range(0,100):
+                                            returnNum = 1
+                                            
+                                             # Distance coordinate (check for non-zero)
+                                            coord1 = struct.unpack('<I',data_pc[bytePos:bytePos+4])[0]
+                                            
+                                            zeroORtwo = i % 2
+                                            
+                                            #timestamp
+                                            timestamp_sec += float(not(zeroORtwo)) * 0.00001
+                                            
+                                            #return number
+                                            returnNum += zeroORtwo * 1
+                                            
+                                            if coord1:
+                                                numPts += 1
+                                                binFile.write(data_pc[bytePos:bytePos+9])
+                                                binFile.write(struct.pack('<d',timestamp_sec))
+                                                binFile.write(str.encode(str(returnNum)))
+                                            else:
+                                                nullPts += 1
+                                            
+                                            bytePos += 9
+                                
+                                #triple return firmware
+                                elif self.firmwareType == 3:
+                                    #to account for first point's timestamp being increment in the loop
+                                    timestamp_sec -= 0.000016666
+                                
+                                    #Cartesian Coordinate System
+                                    if self.dataType == 0:
+                                        for i in range(0,100):
+                                            returnNum = 1
+                                            
+                                             # Y coordinate (check for non-zero)
+                                            coord2 = struct.unpack('<i',data_pc[bytePos+4:bytePos+8])[0]
+                                            
+                                            zeroORoneORtwo = i % 3
+                                            
+                                            #timestamp
+                                            timestamp_sec += float(not(zeroORoneORtwo)) * 0.000016666
+                                            
+                                            #return number
+                                            returnNum += zeroORoneORtwo * 1
+                                            
+                                            if coord2:
+                                                numPts += 1
+                                                binFile.write(data_pc[bytePos:bytePos+13])
+                                                binFile.write(struct.pack('<d',timestamp_sec))
+                                                binFile.write(str.encode(str(returnNum)))
+                                            else:
+                                                nullPts += 1
+                                        
+                                            bytePos += 13
+                                         
+                                    #Spherical Coordinate System
+                                    elif self.dataType == 1:
+                                        for i in range(0,100):
+                                            returnNum = 1
+                                            
+                                             # Distance coordinate (check for non-zero)
+                                            coord1 = struct.unpack('<I',data_pc[bytePos:bytePos+4])[0]
+                                            
+                                            zeroORoneORtwo = i % 3
+                                            
+                                            #timestamp
+                                            timestamp_sec += float(not(zeroORoneORtwo)) * 0.000016666
+                                            
+                                            #return number
+                                            returnNum += zeroORoneORtwo * 1
+                                            
+                                            if coord1:
+                                                binFile.write(data_pc[bytePos:bytePos+9])
+                                                binFile.write(struct.pack('<d',timestamp_sec))
+                                                binFile.write(str.encode(str(returnNum)))
+                                            else:
+                                                nullPts += 1
+                                            
+                                            bytePos += 9
+                    
+                        
+                        #duration check (exit point)
+                        else:
+                            self.started = False
+                            self.isCapturing = False
+                            break
+                    #thread still running check (exit point)
+                    else:
+                        break
+                
+
+                self.numPts = numPts
+                self.nullPts = nullPts
+                    
+                if self.showMessages: 
+                    print("   " + self.sensorIP + " --> closed BINARY file: " + self.filePathAndName)
+                    print("                    (points: " + str(numPts) + " good, " + str(nullPts) + " null, " + str(numPts + nullPts) + " total)")
+                
+                binFile.close()
+                
+            else:
+                if self.showMessages: print("   " + self.sensorIP + " --> Incorrect lidar packet version") 
+    
+
+
     def getTimestamp(self, data_pc, timestamp_type):
         
         #nanosecond timestamp
@@ -1623,12 +1905,12 @@ class openpylivox(object):
         else:
             if self.showMessages: print("Not connected to Mid-40 sensor at IP: " + self._sensorIP)
             
-            
+    @deprecated(version='1.0.1', reason="You should use dataStart_RT instead")            
     def dataStart(self):
         
         if self._isConnected:
             if not self._isData:
-                self._captureStream = _dataCaptureThread(self._sensorIP, self._dataSocket, "",0 ,0, 0, 0, self.showMessages)
+                self._captureStream = _dataCaptureThread(self._sensorIP, self._dataSocket, "", 0, 0, 0, 0, self.showMessages)
                 time.sleep(0.12)
                 self._waitForIdle()
                 self._cmdSocket.sendto(self._CMD_DATA_START,(self._sensorIP, 65000))
@@ -1660,7 +1942,40 @@ class openpylivox(object):
         
         if self._isConnected:
             if not self._isData:
-                self._captureStream = _dataCaptureThread(self._sensorIP, self._dataSocket, "",1 ,0, 0, 0, self.showMessages)
+                self._captureStream = _dataCaptureThread(self._sensorIP, self._dataSocket, "", 1, 0, 0, 0, self.showMessages)
+                time.sleep(0.12)
+                self._waitForIdle()
+                self._cmdSocket.sendto(self._CMD_DATA_START,(self._sensorIP, 65000))
+                if self.showMessages: print("   " + self._sensorIP + " <-- sent start data stream request")
+            
+                #check for proper response from data start request
+                if select.select([self._cmdSocket],[],[],0.1)[0]:
+                    binData, addr = self._cmdSocket.recvfrom(16)
+                    _,ack,cmd_set,cmd_id,ret_code_bin = self._parseResp(binData)
+    
+                    if ack == "ACK (response)" and cmd_set == "General" and cmd_id == "4":
+                        ret_code = int.from_bytes(ret_code_bin[0], byteorder='little')
+                        if ret_code == 1:
+                            if self.showMessages: print("   " + self._sensorIP + " --> FAILED to start data stream")
+                            if self._captureStream is not None:
+                                self._captureStream.stop()
+                            time.sleep(0.1)
+                            self._isData = False
+                        else:
+                            self._isData = True
+                    else:
+                        if self.showMessages: print("   " + self._sensorIP + " --> incorrect start data stream response")
+            else:
+                if self.showMessages: print("   " + self._sensorIP + " --> data stream already started")
+        else:
+            if self.showMessages: print("Not connected to Mid-40 sensor at IP: " + self._sensorIP)
+            
+            
+    def dataStart_RT_B(self):
+        
+        if self._isConnected:
+            if not self._isData:
+                self._captureStream = _dataCaptureThread(self._sensorIP, self._dataSocket, "", 2, 0, 0, 0, self.showMessages)
                 time.sleep(0.12)
                 self._waitForIdle()
                 self._cmdSocket.sendto(self._CMD_DATA_START,(self._sensorIP, 65000))
@@ -1719,7 +2034,7 @@ class openpylivox(object):
                 if self.showMessages: print("   " + self._sensorIP + " --> data stream already stopped")
         else:
             if self.showMessages: print("Not connected to Mid-40 sensor at IP: " + self._sensorIP)
-            
+    
     
     def setDynamicIP(self):
         
@@ -1989,7 +2304,7 @@ class openpylivox(object):
         else:
             if self.showMessages: print("Not connected to Mid-40 sensor at IP: " + self._sensorIP)
             
-            
+    @deprecated(version='1.0.2', reason="You should use saveDataToFile instead")            
     def saveDataToCSV(self, filePathAndName, secsToWait, duration):
         
         if self._isConnected:
@@ -2036,8 +2351,61 @@ class openpylivox(object):
             else:
                 if self.showMessages: print("   " + self._sensorIP + " --> WARNING: data stream not started, no CSV file created")
 
-        
+
+    @deprecated(version='1.0.2', reason="You should use closeFile instead") 
     def closeCSV(self):
+        if self._isConnected:
+            if self._isWriting:
+                if self._captureStream is not None:
+                    self._captureStream.stop()
+                self._isWriting = False
+    
+             
+    def saveDataToFile(self, filePathAndName, secsToWait, duration):
+        
+        if self._isConnected:
+            if self._isData:
+                if self._firmware != "UNKNOWN":
+                    try:
+                        firmwareType = self._SPECIAL_FIRMWARE_TYPE_DICT[self._firmware]
+                    except:
+                        firmwareType = 1
+    
+                    if duration < 0:
+                        if self.showMessages: print("   " + self._sensorIP + " --> * ISSUE: saving data, negative duration")
+                    else:
+                        #max duration = 4 years - 1 sec
+                        if duration >= 126230400:
+                            if self.showMessages: print("   " + self._sensorIP + " --> * ISSUE: saving data, duration too big")
+                        else:
+                        
+                            if secsToWait < 0:
+                                if self.showMessages: print("   " + self._sensorIP + " --> * ISSUE: saving data, negative time to wait")
+                            else:
+                                #max time to wait = 15 mins
+                                if secsToWait > 900:
+                                    if self.showMessages: print("   " + self._sensorIP + " --> * ISSUE: saving data, time to wait too big")
+                                else:
+                                
+                                    if filePathAndName == "":
+                                        if self.showMessages: print("   " + self._sensorIP + " --> * ISSUE: saving data, file path and name missing")
+                                    else:
+
+                                        self._isWriting = True
+                                        self._captureStream.filePathAndName = filePathAndName
+                                        self._captureStream.secsToWait = secsToWait
+                                        self._captureStream.duration = duration
+                                        self._captureStream.firmwareType = firmwareType
+                                        self._captureStream.showMessages = self.showMessages
+                                        time.sleep(0.1)
+                                        self._captureStream.isCapturing = True
+                else:
+                    if self.showMessages: print("   " + self._sensorIP + " --> unknown firmware version")
+            else:
+                if self.showMessages: print("   " + self._sensorIP + " --> WARNING: data stream not started, no data file created")
+
+
+    def closeFile(self):
         if self._isConnected:
             if self._isWriting:
                 if self._captureStream is not None:
@@ -2197,8 +2565,97 @@ def allDoneCapturing(sensors):
     time.sleep(0.01)
     return all(stop)
     
-    
-    
+
+def convertBin2CSV(filePathAndName, deleteBin = False):
+    binFile = None
+    csvFile = None
+    try:
+        dataClass = 0
+        if os.path.exists(filePathAndName) and os.path.isfile(filePathAndName):
+            binFile = open(filePathAndName,"rb")
+            
+            checkMessage = (binFile.read(11)).decode('UTF-8')
+            if checkMessage == "OPENPYLIVOX":
+                with open(filePathAndName + ".csv","w",1) as csvFile:
+                    firmwareType = struct.unpack('<h',binFile.read(2))[0]
+                    dataType = struct.unpack('<h',binFile.read(2))[0]
+                    if firmwareType >= 1 and firmwareType <= 3:
+                        if dataType == 0 or dataType == 1:
+                            print("\nCONVERTING BINARY DATA TO CSV, PLEASE WAIT...")
+                            if firmwareType == 1 and dataType == 0:
+                                csvFile.write("//X,Y,Z,Inten-sity,Time\n")
+                                dataClass = 1
+                            elif firmwareType == 1 and dataType == 1:
+                                csvFile.write("//Distance,Zenith,Azimuth,Inten-sity,Time\n")
+                                dataClass = 2
+                            elif firmwareType > 1 and dataType == 0:
+                                csvFile.write("//X,Y,Z,Inten-sity,Time,ReturnNum\n")
+                                dataClass = 3
+                            elif firmwareType > 1 and dataType == 1:
+                                csvFile.write("//Distance,Zenith,Azimuth,Inten-sity,Time,ReturnNum\n")
+                                dataClass = 4
+
+                            while True:
+                                try:
+                                    if dataClass == 1:
+                                        coord1 = float(struct.unpack('<i',binFile.read(4))[0])/1000.0
+                                        coord2 = float(struct.unpack('<i',binFile.read(4))[0])/1000.0
+                                        coord3 = float(struct.unpack('<i',binFile.read(4))[0])/1000.0
+                                        intensity = int.from_bytes(binFile.read(1), byteorder='little')
+                                        timestamp_sec = float(struct.unpack('<d',binFile.read(8))[0])
+                                        csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.3f}".format(coord2) + "," + "{0:.3f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "\n")
+                                    
+                                    elif dataClass == 2:
+                                        coord1 = float(struct.unpack('<I',binFile.read(4))[0])/1000.0
+                                        coord2 = float(struct.unpack('<H',binFile.read(2))[0])/100.0
+                                        coord3 = float(struct.unpack('<H',binFile.read(2))[0])/100.0
+                                        intensity = int.from_bytes(binFile.read(1), byteorder='little')
+                                        timestamp_sec = float(struct.unpack('<d',binFile.read(8))[0])
+                                        csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.2f}".format(coord2) + "," + "{0:.2f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "\n")
+                                    
+                                    elif dataClass == 3:
+                                        coord1 = float(struct.unpack('<i',binFile.read(4))[0])/1000.0
+                                        coord2 = float(struct.unpack('<i',binFile.read(4))[0])/1000.0
+                                        coord3 = float(struct.unpack('<i',binFile.read(4))[0])/1000.0
+                                        intensity = int.from_bytes(binFile.read(1), byteorder='little')
+                                        timestamp_sec = float(struct.unpack('<d',binFile.read(8))[0])
+                                        returnNum = (binFile.read(1)).decode('UTF-8')
+                                        csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.3f}".format(coord2) + "," + "{0:.3f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + returnNum + "\n")
+
+                                    elif dataClass == 4:
+                                        coord1 = float(struct.unpack('<I',binFile.read(4))[0])/1000.0
+                                        coord2 = float(struct.unpack('<H',binFile.read(2))[0])/100.0
+                                        coord3 = float(struct.unpack('<H',binFile.read(2))[0])/100.0
+                                        intensity = int.from_bytes(binFile.read(1), byteorder='little')
+                                        timestamp_sec = float(struct.unpack('<d',binFile.read(8))[0])
+                                        returnNum = (binFile.read(1)).decode('UTF-8')
+                                        csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.2f}".format(coord2) + "," + "{0:.2f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + returnNum + "\n")
+                                        
+                                except:
+                                    break
+                                
+                            binFile.close()
+                            print("   - Data conversion was successful")
+                            if deleteBin:
+                                os.remove(filePathAndName)
+                                print("   - Binary file has been deleted")
+                            print()
+
+                        else:
+                            print("***ERROR: The BINARY file reported a wrong data type***")
+                            binFile.close()
+                    else:
+                        print("***ERROR: The BINARY file reported a wrong firmware type***")      
+                        binFile.close()
+            else:
+                print("***ERROR: The file was not recognized as an OpenPyLivox Binary data file***")
+                binFile.close()
+            
+    except:
+        binFile.close()
+        print("An error occurred while trying to convert the BINARY file to a comman delimited ASCII file" )
+   
+
         
                 
     
