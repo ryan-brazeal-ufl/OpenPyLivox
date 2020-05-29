@@ -8,16 +8,16 @@ Started on Mon. May 13th 2019
 @email: ryan.brazeal@ufl.edu
 
 Program Name: openpylivox.py
-Version: 1.0.2
+Version: 1.0.3
 
 Description: Python3 driver for UDP Communications with Lixov Mid-40 Lidar sensor
 
 Livox SDK link: https://github.com/Livox-SDK/Livox-SDK/wiki/Livox-SDK-Communication-Protocol
 
 Change Log:
-    - v1.0.0 release Sept. 13th 2019
-    - v1.0.1 release May 27th 2020
-    - v1.0.2 release May 29th 2020
+    - v1.0.0 released - Sept. 13th 2019
+    - v1.0.1 released - May 27th 2020
+    - v1.0.2 and v1.0.3 released - May 29th 2020
     
 
 """
@@ -701,60 +701,57 @@ class _dataCaptureThread(object):
                                     #Cartesian Coordinate System
                                     if self.dataType == 0:
                                         for i in range(0,100):
-                                            
-                                            # X coordinate
-                                            coord1 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4
-                                            
-                                            # Y coordinate
-                                            coord2 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4
-                                            
-                                            # Z coordinate
-                                            coord3 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4 
-                                            
-                                            #intensity
-                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
-                                            bytePos += 1
+        
+                                            # Y coordinate (check for non-zero)
+                                            coord2 = struct.unpack('<i',data_pc[bytePos+4:bytePos+8])[0]
                                             
                                             #timestamp
                                             timestamp_sec += 0.00001
                                             
                                             if coord2:
+                                                # X coordinate
+                                                coord1 = struct.unpack('<i',data_pc[bytePos:bytePos+4])[0]
+                                                bytePos += 8
+                                                # Z coordinate
+                                                coord3 = struct.unpack('<i',data_pc[bytePos:bytePos+4])[0]
+                                                bytePos += 4 
+                                                #intensity
+                                                intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
+                                                bytePos += 1
+                                                
                                                 numPts += 1
-                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.3f}".format(coord2) + "," + "{0:.3f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "\n")
+                                                csvFile.write("{0:.3f}".format(float(coord1)/1000.0) + "," + "{0:.3f}".format(float(coord2)/1000.0) + "," + "{0:.3f}".format(float(coord3)/1000.0) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "\n")
                                             else:
                                                 nullPts += 1
+                                                bytePos += 13
                                     
                                     #Spherical Coordinate System
                                     elif self.dataType == 1:
                                         for i in range(0,100):
                                             
-                                            # Distance coordinate
-                                            coord1 = float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4
-                                            
-                                            # Zenith coordinate
-                                            coord2 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
-                                            bytePos += 2
-                                            
-                                            # Azimuth coordinate
-                                            coord3 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
-                                            bytePos += 2 
-                                            
-                                            #intensity
-                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
-                                            bytePos += 1
+                                            # Distance coordinate (check for non-zero)
+                                            coord1 = struct.unpack('<I',data_pc[bytePos:bytePos+4])[0]
                                             
                                             #timestamp
                                             timestamp_sec += 0.00001
                                             
                                             if coord1:
+                                                bytePos += 4                                
+                                                # Zenith coordinate
+                                                coord2 = struct.unpack('<H',data_pc[bytePos:bytePos+2])[0]
+                                                bytePos += 2                                
+                                                # Azimuth coordinate
+                                                coord3 = struct.unpack('<H',data_pc[bytePos:bytePos+2])[0]
+                                                bytePos += 2                                 
+                                                #intensity
+                                                intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
+                                                bytePos += 1
+                                                
                                                 numPts += 1
-                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.2f}".format(coord2) + "," + "{0:.2f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "\n")
+                                                csvFile.write("{0:.3f}".format(float(coord1)/1000.0) + "," + "{0:.2f}".format(float(coord2)/100.0) + "," + "{0:.2f}".format(float(coord3)/100.0) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "\n")
                                             else:
                                                 nullPts += 1
+                                                bytePos += 9
                                          
                                 #double return firmware
                                 elif self.firmwareType == 2:
@@ -766,21 +763,8 @@ class _dataCaptureThread(object):
                                         for i in range(0,100):
                                             returnNum = 1
                                             
-                                            # X coordinate
-                                            coord1 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4
-                                            
-                                            # Y coordinate
-                                            coord2 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4
-                                            
-                                            # Z coordinate
-                                            coord3 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4 
-                                            
-                                            #intensity
-                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
-                                            bytePos += 1
+                                            # Y coordinate (check for non-zero)
+                                            coord2 = struct.unpack('<i',data_pc[bytePos+4:bytePos+8])[0]
                                             
                                             zeroORtwo = i % 2
                                             
@@ -791,32 +775,29 @@ class _dataCaptureThread(object):
                                             returnNum += zeroORtwo * 1
                                             
                                             if coord2:
+                                                # X coordinate
+                                                coord1 = struct.unpack('<i',data_pc[bytePos:bytePos+4])[0]
+                                                bytePos += 8
+                                                # Z coordinate
+                                                coord3 = struct.unpack('<i',data_pc[bytePos:bytePos+4])[0]
+                                                bytePos += 4 
+                                                #intensity
+                                                intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
+                                                bytePos += 1
+                                                
                                                 numPts += 1
-                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.3f}".format(coord2) + "," + "{0:.3f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                                csvFile.write("{0:.3f}".format(float(coord1)/1000.0) + "," + "{0:.3f}".format(float(coord2)/1000.0) + "," + "{0:.3f}".format(float(coord3)/1000.0) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
                                             else:
                                                 nullPts += 1
-                        
+                                                bytePos += 13                        
                                          
                                     #Spherical Coordinate System
                                     elif self.dataType == 1:
                                         for i in range(0,100):
                                             returnNum = 1
                                             
-                                             # Distance coordinate
-                                            coord1 = float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4
-                                            
-                                            # Zenith coordinate
-                                            coord2 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
-                                            bytePos += 2
-                                            
-                                            # Azimuth coordinate
-                                            coord3 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
-                                            bytePos += 2 
-                                            
-                                            #intensity
-                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
-                                            bytePos += 1
+                                             # Distance coordinate (check for non-zero)
+                                            coord1 = struct.unpack('<I',data_pc[bytePos:bytePos+4])[0]
                                             
                                             zeroORtwo = i % 2
                                             
@@ -827,10 +808,22 @@ class _dataCaptureThread(object):
                                             returnNum += zeroORtwo * 1
                                             
                                             if coord1:
+                                                bytePos += 4                                
+                                                # Zenith coordinate
+                                                coord2 = struct.unpack('<H',data_pc[bytePos:bytePos+2])[0]
+                                                bytePos += 2                                
+                                                # Azimuth coordinate
+                                                coord3 = struct.unpack('<H',data_pc[bytePos:bytePos+2])[0]
+                                                bytePos += 2                                 
+                                                #intensity
+                                                intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
+                                                bytePos += 1
+                                                
                                                 numPts += 1
-                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.2f}".format(coord2) + "," + "{0:.2f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                                csvFile.write("{0:.3f}".format(float(coord1)/1000.0) + "," + "{0:.2f}".format(float(coord2)/100.0) + "," + "{0:.2f}".format(float(coord3)/100.0) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
                                             else:
                                                 nullPts += 1
+                                                bytePos += 9
                                             
                                 
                                 #triple return firmware
@@ -843,21 +836,8 @@ class _dataCaptureThread(object):
                                         for i in range(0,100):
                                             returnNum = 1
                                             
-                                             # X coordinate
-                                            coord1 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4
-                                            
-                                            # Y coordinate
-                                            coord2 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4
-                                            
-                                            # Z coordinate
-                                            coord3 = float(struct.unpack('<i',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4 
-                                            
-                                            #intensity
-                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
-                                            bytePos += 1
+                                             # Y coordinate (check for non-zero)
+                                            coord2 = struct.unpack('<i',data_pc[bytePos+4:bytePos+8])[0]
                                             
                                             zeroORoneORtwo = i % 3
                                             
@@ -868,10 +848,21 @@ class _dataCaptureThread(object):
                                             returnNum += zeroORoneORtwo * 1
                                             
                                             if coord2:
+                                                # X coordinate
+                                                coord1 = struct.unpack('<i',data_pc[bytePos:bytePos+4])[0]
+                                                bytePos += 8
+                                                # Z coordinate
+                                                coord3 = struct.unpack('<i',data_pc[bytePos:bytePos+4])[0]
+                                                bytePos += 4 
+                                                #intensity
+                                                intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
+                                                bytePos += 1
+                                                
                                                 numPts += 1
-                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.3f}".format(coord2) + "," + "{0:.3f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                                csvFile.write("{0:.3f}".format(float(coord1)/1000.0) + "," + "{0:.3f}".format(float(coord2)/1000.0) + "," + "{0:.3f}".format(float(coord3)/1000.0) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
                                             else:
                                                 nullPts += 1
+                                                bytePos += 13
                                         
                                          
                                     #Spherical Coordinate System
@@ -879,21 +870,8 @@ class _dataCaptureThread(object):
                                         for i in range(0,100):
                                             returnNum = 1
                                             
-                                             # Distance coordinate
-                                            coord1 = float(struct.unpack('<I',data_pc[bytePos:bytePos+4])[0])/1000.0
-                                            bytePos += 4
-                                            
-                                            # Zenith coordinate
-                                            coord2 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
-                                            bytePos += 2
-                                            
-                                            # Azimuth coordinate
-                                            coord3 = float(struct.unpack('<H',data_pc[bytePos:bytePos+2])[0])/100.0
-                                            bytePos += 2 
-                                            
-                                            #intensity
-                                            intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
-                                            bytePos += 1
+                                            # Distance coordinate (check for non-zero)
+                                            coord1 = struct.unpack('<I',data_pc[bytePos:bytePos+4])[0]
                                             
                                             zeroORoneORtwo = i % 3
                                             
@@ -904,11 +882,22 @@ class _dataCaptureThread(object):
                                             returnNum += zeroORoneORtwo * 1
                                             
                                             if coord1:
+                                                bytePos += 4                                
+                                                # Zenith coordinate
+                                                coord2 = struct.unpack('<H',data_pc[bytePos:bytePos+2])[0]
+                                                bytePos += 2                                
+                                                # Azimuth coordinate
+                                                coord3 = struct.unpack('<H',data_pc[bytePos:bytePos+2])[0]
+                                                bytePos += 2                                 
+                                                #intensity
+                                                intensity = int.from_bytes(data_pc[bytePos:bytePos+1], byteorder='little')
+                                                bytePos += 1
+                                                
                                                 numPts += 1
-                                                csvFile.write("{0:.3f}".format(coord1) + "," + "{0:.2f}".format(coord2) + "," + "{0:.2f}".format(coord3) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
+                                                csvFile.write("{0:.3f}".format(float(coord1)/1000.0) + "," + "{0:.2f}".format(float(coord2)/100.0) + "," + "{0:.2f}".format(float(coord3)/100.0) + "," + str(intensity) + "," + "{0:.6f}".format(timestamp_sec) + "," + str(returnNum) + "\n")
                                             else:
                                                 nullPts += 1
-                    
+                                                bytePos += 9
                         
                         #duration check (exit point)
                         else:
@@ -919,7 +908,6 @@ class _dataCaptureThread(object):
                     else:
                         break
                 
-
                 self.numPts = numPts
                 self.nullPts = nullPts
                     
@@ -2653,7 +2641,7 @@ def convertBin2CSV(filePathAndName, deleteBin = False):
             
     except:
         binFile.close()
-        print("An error occurred while trying to convert the BINARY file to a comman delimited ASCII file" )
+        print("An unknown error occurred while converting the BINARY file to a comman delimited ASCII file" )
    
 
         
