@@ -34,3 +34,4 @@ Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for a 
 - Wiki for v1.0 completed, Monday Sept. 23rd 2019
 - Wiki v1.0 minor updates, Saturday Nov. 30th 2019
 - v1.0.1 released, Wednesday May 27th 2020
+- v1.0.2 released, Friday May 29th 2020
