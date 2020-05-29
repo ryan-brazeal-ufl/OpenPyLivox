@@ -8,7 +8,7 @@ Started on Mon. May 13th 2019
 @email: ryan.brazeal@ufl.edu
 
 Program Name: livox_controller_demo.py
-Version: 1.0.2
+Version: 1.0.3
 
 Description: Python3 demo for controlling a single or multiple Livox Mid-40 sensor(s) using openpylivox
 
