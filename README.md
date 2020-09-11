@@ -32,6 +32,12 @@ Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for a 
     <td style="border:0px;"><img src="./images/image2_rs.png"></td>
   </tr>
 </table>
+<table style="border:0px;">
+  <tr style="border:0px;">
+   <td style="border:0px;"><img width="700px" src="./images/Horizon_FOV.jpg"></td>
+   <td style="border:0px;"><img width="185px" src="./images/IMG_2072.jpeg"></td>
+  </tr>
+</table>
 
 ## Change Log:
 - v1.0 released, **FRIDAY** Sept. **the 13th** 2019
