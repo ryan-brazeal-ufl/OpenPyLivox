@@ -5,7 +5,8 @@ The OpenPyLivox (OPL) library is a near complete, fully pythonic, implementation
 
 This library and associated documentation, is designed for **ANYONE and EVERYONE** to be able to use it. From students and teachers interested in using lidar/laser scanning in STEM curriculum or projects, to researchers investigating lidar for autonomous vehicle/robot navigation!
 
-***See the [Wiki](../../wiki) Pages for ~~complete~~ documentation! Documentation is currently being updated for the new features of v1.1.0, view the demo file below for how to access the new features).***
+***See the [Wiki](../../wiki) Pages for ~~complete~~ documentation!***
+ - Documentation is currently being updated for the new features of v1.1.0, view the demo file below for how to access the new features.
 
 Check out the [livox_controller_demo.py](./livox_controller_demo.py) file for a very detailed example on how to use the OpenPyLivox library to control and capture point cloud data from a single Livox sensor, as well as from multiple Livox sensors simultaneously!
 
