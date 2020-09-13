@@ -1,3 +1,7 @@
+<img width="275px" src="./images/OPL_logo.png"></td>
+
+<hr>
+
 # OpenPyLivox (OPL)
 The ***unofficial*** Python3 driver for Livox lidar sensors ;)
 
