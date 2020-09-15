@@ -1,4 +1,4 @@
-<img width="275px" src="./images/OPL_logo.png"></td>
+<img width="275px" src="./images/OPL_logo2_sm.png"></td>
 
 <hr>
 
