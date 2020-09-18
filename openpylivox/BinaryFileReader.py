@@ -14,15 +14,14 @@ Description: class for reading livox horizon binary data files
 
 Change Log:
     - v1.0.0 released - Sept. 11th 2020
-    
+
 """
 
 # Required Import Statements
 import struct
 import numpy as np
-import matplotlib as plt
-import matplotlib.cm as colormap
-from mpl_toolkits.mplot3d import Axes3D
+
+
 
 class BinaryReaders:
     '''
@@ -30,7 +29,7 @@ class BinaryReaders:
     ----------
     '''
 
-    def __init__(self, datapoints, imudata):
+    def __init__(self, datapoints, imudata, datatype=None):
         if datapoints is None:
             self.datapoints = []
         else:
@@ -40,10 +39,13 @@ class BinaryReaders:
         else:
             self.imudata = imudata
 
+        self.datatype = datatype
+
+
     @staticmethod
-    def simplecloudreader(pathtofile):
+    def simplecloudreader(pathtofile, showmessages=False):
         '''
-        A method which reads 3D point clouds (NOT livox horizon files) with a header. 
+        A method which reads 3D point clouds (NOT livox horizon files) with a header.
         The public header block is 27 bytes long and consists of
         the string 9 char string "point_num", the 6 byte character string "x_coor", the 6 byte char string "y-coor" and
         the 6 byte char string "z_coor".
@@ -107,23 +109,26 @@ class BinaryReaders:
                     header2 = header[1].decode('utf-8')
                     header3 = header[2].decode('utf-8')
                     header4 = header[3].decode('utf-8')
-                    print("The header values are:", header1, header2, header3, header4)
+                    if showmessages:
+                        print("The header values are:", header1, header2, header3, header4)
 
                     # Create a numpy.void array for holding our values
                     # first define the field 'names' for the numpy array which were read in from the header block,
                     # and the data types of each column of the numpy array (known beforehand from the PDF)
-                    dt = {'names': [header1, header2, header3, header4], 'formats': [np.int64, np.double, np.double, np.double]}
+                    dt = {'names': [header1, header2, header3, header4],
+                          'formats': [np.int64, np.double, np.double, np.double]}
 
                     # Now actually create the array
                     # We've initialized it as an array of 4 zeros, and will append in the elif statements
                     # Specifically it is one row (hence the 1 in the statement below) of 4 zeros with each column of
                     # that row having the datatype specified by dt above
                     pointcloud = np.zeros(1, dtype=dt)
-                    print("The pointcloud array looks like:")
-                    print(pointcloud)
+                    if showmessages:
+                        print("The pointcloud array looks like:")
+                        print(pointcloud)
                     # How could this statement be written more pythonically? Google increment/decrement operators in
                     # python
-                    counter+= 1
+                    counter += 1
                 # If we're reading in the first block of data (data blocks)
                 elif counter == 1:
                     # Read in the numerical data from the buffer of size datablocksize
@@ -186,7 +191,7 @@ class BinaryReaders:
         return pointcloud
 
     @staticmethod
-    def data_type0_reader(fobj, totalbytesread, datatype_points, datasize_0 = 13):
+    def data_type0_reader(fobj, totalbytesread, datatype_points, datasize_0=13, showmessages=False):
         '''
                 A method for reading in data type 0 points
 
@@ -212,28 +217,41 @@ class BinaryReaders:
 
                 '''
         newcounter = 1
-        print("Type 0 points being read...")
-        #create empty list
+        if showmessages:
+            print("Type 0 points being read...")
+        # create empty list
         points_type_0 = [];
         while newcounter <= 100:
-            #print("Point", newcounter)
+            # print("Point", newcounter)
             buf6 = fobj.read(datasize_0)
             value6 = struct.unpack('<iiiB', buf6)
-            #add values to list
+            # add values to list
             points_type_0.append(value6)
             if (value6[0] != 0 and value6[1] != 0 and value6[2] != 0):
-                datatype_points.append(value6)
-            #increment counter
+                # X, Y, Z, reflect., return num.
+                pt = [0, 0, 0, 0, 0]
+                pt[0] = value6[0] / 1000.
+                pt[1] = value6[1] / 1000.
+                pt[2] = value6[2] / 1000.
+                pt[3] = value6[3]
+                #return num (for Mid-40/100 special firmwares)
+                pt[4] = 1
+                if pt[3] == 200:
+                    pt[4] = 2
+                elif pt[3] == 250:
+                    pt[4] = 3
+                datatype_points.append(pt)
+            # increment counter
             newcounter = newcounter + 1
-            #add to total amount of bytes read
+            # add to total amount of bytes read
             totalbytesread += datasize_0
         # print the type 1 points in this package
-        #print(points_type_0)
+        # print(points_type_0)
 
         return [totalbytesread, points_type_0, datatype_points]
 
     @staticmethod
-    def data_type1_reader(fobj, totalbytesread, datatype_points, datasize_1=9):
+    def data_type1_reader(fobj, totalbytesread, datatype_points, datasize_1=9, showmessages=False):
         '''
         A method for reading in data type 1 points
 
@@ -260,29 +278,41 @@ class BinaryReaders:
 
         '''
         newcounter2 = 1
-        print("Type 1 points being read...")
-        #create empty list
+        if showmessages:
+            print("Type 1 points being read...")
+        # create empty list
         points_type_1 = []
         while newcounter2 <= 100:
-            #print("Point", newcounter2)
+            # print("Point", newcounter2)
             buf6 = fobj.read(datasize_1)
             value6 = struct.unpack('<iHHB', buf6)
-            #add values to list
+            # add values to list
             points_type_1.append(value6)
             if (value6[0] != 0 and value6[1] != 0 and value6[2] != 0):
-                datatype_points.append(value6)
-            #increment counter
+                # Dist., Zen., Azi, reflect., return num.
+                pt = [0, 0, 0, 0, 0]
+                pt[0] = value6[0] / 1000.
+                pt[1] = value6[1] / 100.
+                pt[2] = value6[2] / 100.
+                pt[3] = value6[3]
+                # return num (for Mid-40/100 special firmwares)
+                pt[4] = 1
+                if pt[3] == 200:
+                    pt[4] = 2
+                elif pt[3] == 250:
+                    pt[4] = 3
+                datatype_points.append(pt)
+            # increment counter
             newcounter2 = newcounter2 + 1
             # add to total amount of bytes read
             totalbytesread += datasize_1
         # print the type 1 points in this package
-        #print(points_type_1)
+        # print(points_type_1)
 
         return [totalbytesread, points_type_1, datatype_points]
 
-
     @staticmethod
-    def data_type2_reader(fobj, totalbytesread, datatype_points, datasize_2=14):
+    def data_type2_reader(fobj, totalbytesread, datatype_points, datasize_2=14, showmessages=False):
         '''
         A method for reading in data type 2 points
 
@@ -309,29 +339,38 @@ class BinaryReaders:
 
         '''
         newcounter2 = 1
-        print("Type 2 points being read...")
+        if showmessages:
+            print("Type 2 points being read...")
 
-        #create empty list
+        # create empty list
         points_type_2 = []
         while newcounter2 <= 96:
-            #print("Point", newcounter2)
+            # print("Point", newcounter2)
             buf6 = fobj.read(datasize_2)
             value6 = struct.unpack('<3i2B', buf6)
-            #add values to list
+            # add values to list
             points_type_2.append(value6)
             if (value6[0] != 0 and value6[1] != 0 and value6[2] != 0):
-                datatype_points.append(value6)
-            #increment counter
+                # X, Y, Z, reflect., return num., tag info.
+                pt = [0, 0, 0, 0, 0, 0]
+                pt[0] = value6[0] / 1000.
+                pt[1] = value6[1] / 1000.
+                pt[2] = value6[2] / 1000.
+                pt[3] = value6[3]
+                pt[4] = 1           #return number
+                pt[5] = value6[4]   #tag information
+                datatype_points.append(pt)
+            # increment counter
             newcounter2 = newcounter2 + 1
             # add to total amount of bytes read
             totalbytesread += datasize_2
-        #print the type 2 points in this package
-        #print(points_type_2)
+        # print the type 2 points in this package
+        # print(points_type_2)
 
         return [totalbytesread, points_type_2, datatype_points]
 
     @staticmethod
-    def data_type3_reader(fobj, totalbytesread, datatype_points, datasize_3=10):
+    def data_type3_reader(fobj, totalbytesread, datatype_points, datasize_3=10, showmessages=False):
         '''
         A method for reading in data type 3 points
 
@@ -357,29 +396,37 @@ class BinaryReaders:
 
         '''
         newcounter2 = 1
-        print("Type 3 points being read...")
-        #create empty list
+        if showmessages:
+            print("Type 3 points being read...")
+        # create empty list
         points_type_3 = []
         while newcounter2 <= 96:
-            #print("Point", newcounter2)
+            # print("Point", newcounter2)
             buf6 = fobj.read(datasize_3)
             value6 = struct.unpack('<iHHBB', buf6)
             # add values to list
             points_type_3.append(value6)
             if (value6[0] != 0 and value6[1] != 0 and value6[2] != 0):
-                datatype_points.append(value6)
-            #increment counter
+                # Dist., Zen., Azi, reflect., return num., tag info.
+                pt = [0, 0, 0, 0, 0, 0]
+                pt[0] = value6[0] / 1000.
+                pt[1] = value6[1] / 100.
+                pt[2] = value6[2] / 100.
+                pt[3] = value6[3]
+                pt[4] = 1  # return number
+                pt[5] = value6[4]  # tag information
+                datatype_points.append(pt)
+            # increment counter
             newcounter2 = newcounter2 + 1
             # add to total amount of bytes read
             totalbytesread += datasize_3
-        #print the type 3 points in this package
-        #print(points_type_3)
+        # print the type 3 points in this package
+        # print(points_type_3)
 
         return [totalbytesread, points_type_3, datatype_points]
 
-
     @staticmethod
-    def data_type4_reader(fobj, totalbytesread, datatype_points, datasize_4=28):
+    def data_type4_reader(fobj, totalbytesread, datatype_points, datasize_4=28, showmessages=False):
         '''
         A method for reading in data type 4 points
 
@@ -405,29 +452,47 @@ class BinaryReaders:
 
         '''
         newcounter2 = 1
-        print("Type 4 points being read...")
-        #create empty list
+        if showmessages:
+            print("Type 4 points being read...")
+        # create empty list
         points_type_4 = []
         while newcounter2 <= 48:
-            #print("Point", newcounter2)
+            # print("Point", newcounter2)
             buf6 = fobj.read(datasize_4)
             value6 = struct.unpack('<iiiBBiiiBB', buf6)
             # add values to list
             points_type_4.append(value6)
-            if (value6[0] != 0 and value6[1] != 0 and value6[2] != 0 and value6[5] != 0 and value6[6] != 0 and value6[7] != 0):
-                datatype_points.append(value6)
-            #increment counter
+            if (value6[0] != 0 and value6[1] != 0 and value6[2] != 0):
+                #X, Y, Z, reflect., return num., tag info.
+                pt = [0, 0, 0, 0, 0, 0]
+                pt[0] = value6[0] / 1000.
+                pt[1] = value6[1] / 1000.
+                pt[2] = value6[2] / 1000.
+                pt[3] = value6[3]
+                pt[4] = 1
+                pt[5] = value6[4]
+                datatype_points.append(pt)
+            if (value6[5] != 0 and value6[6] != 0 and value6[7] != 0):
+                #X, Y, Z, reflect., return num., tag info.
+                pt = [0, 0, 0, 0, 0, 0]
+                pt[0] = value6[5] / 1000.
+                pt[1] = value6[6] / 1000.
+                pt[2] = value6[7] / 1000.
+                pt[3] = value6[8]
+                pt[4] = 2
+                pt[5] = value6[9]
+                datatype_points.append(pt)
+            # increment counter
             newcounter2 = newcounter2 + 1
-            #add to total amount of bytes read
+            # add to total amount of bytes read
             totalbytesread += datasize_4
-        #print the type 4 points in this package
-        #print(points_type_4)
+        # print the type 4 points in this package
+        # print(points_type_4)
 
         return [totalbytesread, points_type_4, datatype_points]
 
-
     @staticmethod
-    def data_type5_reader(fobj, totalbytesread, datatype_points, datasize_5=16):
+    def data_type5_reader(fobj, totalbytesread, datatype_points, datasize_5=16, showmessages=False):
         '''
         A method for reading in data type 5 points
 
@@ -453,26 +518,44 @@ class BinaryReaders:
 
         '''
         newcounter2 = 1
-        print("Type 5 points being read...")
+        if showmessages:
+            print("Type 5 points being read...")
         points_type_5 = []
         while newcounter2 <= 48:
-            #print("Point", newcounter2)
+            # print("Point", newcounter2)
             buf6 = fobj.read(datasize_5)
             value6 = struct.unpack('<HHiBBiBB', buf6)
             # add values to list
             points_type_5.append(value6)
-            if (value6[0] != 0 and value6[1] != 0 and value6[2] != 0 and value6[3] != 0 and value6[5] != 0 and value6[6] != 0):
-                datatype_points.append(value6)
+            if (value6[0] != 0 and value6[1] != 0 and value6[2] != 0):
+                # Dist., Zen., Azi, reflect., return num., tag info.
+                pt = [0, 0, 0, 0, 0, 0]
+                pt[0] = value6[2] / 1000.
+                pt[1] = value6[0] / 100.
+                pt[2] = value6[1] / 100.
+                pt[3] = value6[3]
+                pt[4] = 1
+                pt[5] = value6[4]
+                datatype_points.append(pt)
+            if (value6[0] != 0 and value6[1] != 0 and value6[5] != 0):
+                # Dist., Zen., Azi, reflect., return num., tag info.
+                pt = [0, 0, 0, 0, 0, 0]
+                pt[0] = value6[5] / 1000.
+                pt[1] = value6[0] / 100.
+                pt[2] = value6[1] / 100.
+                pt[3] = value6[6]
+                pt[4] = 2
+                pt[5] = value6[7]
+                datatype_points.append(pt)
             newcounter2 = newcounter2 + 1
             totalbytesread += datasize_5
-        #print the type 5 points in this package
-        #print(points_type_5)
+        # print the type 5 points in this package
+        # print(points_type_5)
 
         return [totalbytesread, points_type_5, datatype_points]
 
-
     @staticmethod
-    def data_type6_reader(fobj, totalbytesread, datatype_points, datasize_6=24):
+    def data_type6_reader(fobj, totalbytesread, datatype_points, datasize_6=24, showmessages=False):
         '''
         A method for reading in data type 6 points (IMU data)
 
@@ -503,16 +586,17 @@ class BinaryReaders:
         # unpack it, little endian 6 floating point numbers
         value31 = struct.unpack('<6f', buf31)
         # debug print statements
-        print("IMU")
+        if showmessages:
+            print("IMU")
         points_type_6 = list(value31)
-        print(points_type_6)
+        if showmessages:
+            print(points_type_6)
         datatype_points.append(points_type_6)
         totalbytesread += datasize_6
         return [totalbytesread, points_type_6, datatype_points]
 
-
     @staticmethod
-    def read_package_header(fobj, totalbytesread, packagedatasize=19):
+    def read_package_header(fobj, totalbytesread, packagedatasize=19, showmessages=False):
         '''
         A method for reading package headers
 
@@ -534,20 +618,24 @@ class BinaryReaders:
 
         '''
         # read in the block to the buffer
-        buf7 = fobj.read(packagedatasize)
+        buf7 = fobj.read(11)
+        #reading in the timestamp - 8 bytes
+        buf7b = fobj.read(8)
         # unpack the block as little endian with data types from .lvx documentation
-        value7 = struct.unpack('<5BI2B8p', buf7)
-        print("Package")
-        print(list(value7))
+        value7 = struct.unpack('<5BI2B', buf7)
+        #decoding the timestamp specific for Timestamp Type 0 -- dtype differs for each timestamp type, see livox documentation
+        print(np.frombuffer(buf7b, dtype=np.uint64))
+        if showmessages:
+            print("Package")
+            print(list(value7))
         totalbytesread += packagedatasize
         # We know that value7[7] (per the Livox lvx documentation - see the table on page 8)
         # contains the data type that is going to be read
         datatype = value7[7]
         return [totalbytesread, datatype]
 
-
     @staticmethod
-    def read_frame_header(fobj, frblocksize=24):
+    def read_frame_header(fobj, frblocksize=24, showmessages=False):
         '''
         A method for reading frame headers of Livox .lvx binary files
 
@@ -568,20 +656,21 @@ class BinaryReaders:
         # read in a frame header block
         buf4 = fobj.read(frblocksize)
         if not buf4:
-            print("Done with frame reading")
+            if showmessages:
+                print("Done with frame reading")
             return []
         # unpack the values using the known data type - little endian, 3 unsigned long long types
         value4 = struct.unpack('<3q', buf4)
         # for debugging:
-        print("Frame Header")
-        print(list(value4))
+        if showmessages:
+            print("Frame Header")
+            print(list(value4))
         value4 = list(value4)
         # return the list of values from the frame header
         return value4
 
-
     @classmethod
-    def lvxreader(cls, pathtofile, blockstoread=1):
+    def lvxreader(cls, pathtofile, blockstoread=1, showmessages=False):
         '''
         A method which reads in Livox proprietary .lvx binary files and instantiates a BinaryReaders object.
         The structure of the binary file is detailed in the
@@ -644,14 +733,13 @@ class BinaryReaders:
         # 4 + 4 + 4 + 4 + 4 + 4 = 24
         datasize_6 = 24
 
-
-    #data type zero (x, y, z, reflectivity)
-    #data type 1 (depth, theta, phi, reflectivity)
-    #data type 2 (x, y, z, reflectivity, tag)
-    #data type 3 (depth, theta, phi, reflectivity, tag)
-    #data type 4 (2 returns - x, y, z, reflectivity and tags)
-    #data type 5 (2 returns - depth, theta, phi, reflectivity, tags)
-    #data type 6(IMU data - gyro x, y, z and accelerations x, y, z)
+        # data type zero (x, y, z, reflectivity)
+        # data type 1 (depth, theta, phi, reflectivity)
+        # data type 2 (x, y, z, reflectivity, tag)
+        # data type 3 (depth, theta, phi, reflectivity, tag)
+        # data type 4 (2 returns - x, y, z, reflectivity and tags)
+        # data type 5 (2 returns - depth, theta, phi, reflectivity, tags)
+        # data type 6 (IMU data - gyro x, y, z and accelerations x, y, z)
 
         datatype0_points = []
         datatype1_points = []
@@ -677,19 +765,23 @@ class BinaryReaders:
                 hblock = struct.unpack('<16s4cI', buf)
                 pblock = struct.unpack('<IB', buf2)
 
-                print("Public Header block")
+                if showmessages:
+                    print("Public Header block")
                 hblock = list(hblock)
                 hblock[0] = hblock[0].decode('utf-8')
                 hblock[1] = hblock[1].decode('utf-8')
-                print(hblock)
+                if showmessages:
+                    print(hblock)
 
-                print("Private Header Block")
+                if showmessages:
+                    print("Private Header Block")
                 pblock = list(pblock)
-                #private header gives number of devices
+                # private header gives number of devices
                 devicecount = pblock[1]
-                print(pblock)
+                if showmessages:
+                    print(pblock)
 
-                #place device info in a list
+                # place device info in a list
                 dcounter = 0;
                 deviceinfo = []
                 while (dcounter < devicecount):
@@ -700,12 +792,13 @@ class BinaryReaders:
                     diblock[1] = diblock[1].decode('utf-8')
                     deviceinfo.append(diblock)
                     dcounter += 1
-                print("Devices Info Block")
-                print(deviceinfo)
+                if showmessages:
+                    print("Devices Info Block")
+                    print(deviceinfo)
 
                 counter += 1
 
-                #counter to keep track of how many frames read
+                # counter to keep track of how many frames read
                 fcounter = 0;
                 while True:
                     # Call the static method read_frame_header defined above
@@ -715,19 +808,20 @@ class BinaryReaders:
                     currentoffset = fheaderdata[0] + frblocksize
                     nextoffset = fheaderdata[1]
                     frameindex = fheaderdata[2]
-                    #check if frame index matches up with frame count -- if not, stop frame reading
+                    # check if frame index matches up with frame count -- if not, stop frame reading
                     if (frameindex != fcounter):
                         break
 
                     fcounter += 1
 
-                    #counter to keep track of how many packages read
+                    # counter to keep track of how many packages read
                     pcounter = 0;
                     totalbytesread = 0;
                     totalbytestoread = nextoffset - currentoffset
-                    print(totalbytestoread)
+                    if showmessages:
+                        print(totalbytestoread)
                     while (totalbytesread < totalbytestoread):
-                        #read all packages until next frame
+                        # read all packages until next frame
                         pheader = BinaryReaders.read_package_header(f, totalbytesread, packagedatasize)
                         totalbytesread = pheader[0]
                         datatype = pheader[1]
@@ -766,19 +860,20 @@ class BinaryReaders:
                         # print("Package index:", pcounter)
                         pcounter += 1
         if datatype != 6:
-            print('Data type', datatype)
+            if showmessages:
+                print('Data type', datatype)
         if len(datatype0_points) != 0:
-            return cls(datatype0_points, datatype6_points)
+            return cls(datatype0_points, datatype6_points, 0)
         if len(datatype1_points) != 0:
-            return cls(datatype1_points, datatype6_points)
+            return cls(datatype1_points, datatype6_points, 1)
         if len(datatype2_points) != 0:
-            return cls(datatype2_points, datatype6_points)
+            return cls(datatype2_points, datatype6_points, 2)
         if len(datatype3_points) != 0:
-            return cls(datatype3_points, datatype6_points)
+            return cls(datatype3_points, datatype6_points, 3)
         if len(datatype4_points) != 0:
-            return cls(datatype4_points, datatype6_points)
+            return cls(datatype4_points, datatype6_points, 4)
         if len(datatype5_points) != 0:
-            return cls(datatype5_points, datatype6_points)
+            return cls(datatype5_points, datatype6_points, 5)
 
         # TO PLOT LIVOX DATA
         # in tester class
