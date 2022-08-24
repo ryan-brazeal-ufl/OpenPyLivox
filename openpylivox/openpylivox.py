@@ -1376,7 +1376,7 @@ class _dataCaptureThread(object):
                 if self._showMessages:
                     print("   " + self.sensorIP + self._format_spaces + "   -->     closed BINARY file: " + self.filePathAndName)
                     print("                                (points: " + str(numPts) + " good, " + str(nullPts) + " null, " + str(numPts + nullPts) + " total)")
-                    if self._deviceType == "Horizon" or self._deviceType == "Tele-15":
+                    if self._deviceType in ["Horizon", "Tele-15", "AVIA"]:
                         print("                                (IMU records: " + str(imu_records) + ")")
 
                 binFile.close()
@@ -1814,6 +1814,8 @@ class openpylivox(object):
                     typeMessage = "Tele-15"
                 elif device_type == 3:
                     typeMessage = "Horizon"
+                elif device_type == 7:
+                    typeMessage = "AVIA"
                 else:
                     typeMessage = "UNKNOWN"
 
