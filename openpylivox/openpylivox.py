@@ -40,6 +40,8 @@ from tqdm import tqdm
 import laspy
 from deprecated import deprecated
 
+class LivoxException(Exception):
+    pass
 
 class _heartbeatThread(object):
 
@@ -80,12 +82,10 @@ class _heartbeatThread(object):
                             # TODO: read and store the lidar status codes from heartbeat response (right now only being read from data stream)
 
                             if self.work_state == 4:
-                                print("   " + self.IP + self._format_spaces + self._format_spaces + "   -->     *** ERROR: HEARTBEAT ERROR MESSAGE RECEIVED ***")
-                                sys.exit(0)
+                                raise LivoxException("   " + self.IP + self._format_spaces + self._format_spaces + "   -->     *** ERROR: HEARTBEAT ERROR MESSAGE RECEIVED ***")
                     elif ack == "MSG (message)" and cmd_set == "General" and cmd_id == "7":
                         # not given an option to hide this message!!
-                        print("   " + self.IP + self._format_spaces + self._format_spaces + "   -->     *** ERROR: ABNORMAL STATUS MESSAGE RECEIVED ***")
-                        sys.exit(1)
+                        raise LivoxException("   " + self.IP + self._format_spaces + self._format_spaces + "   -->     *** ERROR: ABNORMAL STATUS MESSAGE RECEIVED ***")
                     else:
                         if self._showMessages: print("   " + self.IP + self._format_spaces + self._format_spaces + "   -->     incorrect heartbeat response")
 
@@ -1600,8 +1600,7 @@ class openpylivox(object):
         if foundMatchIP == False:
             print("\n* ERROR: specified sensor IP:Command Port cannot connect to a Livox sensor *")
             print("* common causes are a wrong IP or the command port is being used already   *\n")
-            time.sleep(0.1)
-            sys.exit(2)
+            raise LivoxException("Failed to find specified sensor")
 
         return unique_serialNums, unique_sensors, sensor_IPs
 
@@ -1722,8 +1721,7 @@ class openpylivox(object):
             return assignedDataPort, assignedCmdPort, assignedIMUPort
 
         except socket.error as err:
-            print(" *** ERROR: cannot bind to specified IP:Port(s), " + err)
-            sys.exit(3)
+            raise LivoxException(" *** ERROR: cannot bind to specified IP:Port(s), " + err)
 
     def _waitForIdle(self):
 
@@ -2572,8 +2570,8 @@ class openpylivox(object):
                         if self._showMessages: print("Changed IP from " + self._sensorIP + " to dynamic IP (DHCP assigned)")
                         self.disconnect()
 
-                        if self._showMessages: print("\n********** PROGRAM ENDED - MUST REBOOT SENSOR **********\n")
-                        sys.exit(4)
+                        if self._showMessages:
+                            raise LivoxException("\n********** PROGRAM ENDED - MUST REBOOT SENSOR **********\n")
                     else:
                         if self._showMessages: print("   " + self._sensorIP + self._format_spaces + "   -->     FAILED to change to dynamic IP (DHCP assigned)")
                 else:
@@ -2623,8 +2621,8 @@ class openpylivox(object):
                             if self._showMessages: print("Changed IP from " + self._sensorIP + " to a static IP of " + formattedIP)
                             self.disconnect()
 
-                            if self._showMessages: print("\n********** PROGRAM ENDED - MUST REBOOT SENSOR **********\n")
-                            sys.exit(5)
+                            if self._showMessages:
+                                raise LivoxException("\n********** PROGRAM ENDED - MUST REBOOT SENSOR **********\n")
                         else:
                             if self._showMessages: print(
                                 "   " + self._sensorIP + self._format_spaces + "   -->     FAILED to change static IP (must be " + ipRange + ")")
